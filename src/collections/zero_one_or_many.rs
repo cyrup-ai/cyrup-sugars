@@ -1,13 +1,12 @@
-#[cfg(feature = "hashbrown-json")]
+// -----------------------------------------------------------------------------
+// src/zero_one_or_many.rs
+// -----------------------------------------------------------------------------
+
 use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
-#[cfg(feature = "hashbrown-json")]
 use serde::ser::{SerializeSeq, Serializer};
-#[cfg(feature = "hashbrown-json")]
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "hashbrown-json")]
 use std::fmt;
 use std::iter::FromIterator;
-#[cfg(feature = "hashbrown-json")]
 use std::marker::PhantomData;
 
 /// A collection that can hold zero, one, or many values of type `T`.
@@ -17,46 +16,40 @@ use std::marker::PhantomData;
 /// heap allocations and provide immutable operations that return new instances.
 ///
 /// ### Variants
-/// - `None`: Represents an empty collection with no elements. This variant uses zero
-///   heap allocations.
-/// - `One(T)`: Represents a collection with exactly one element. This variant also
-///   uses zero heap allocations, as it directly holds the element.
-/// - `Many(Vec<T>)`: Represents a collection with multiple elements. This variant
-///   uses a `Vec<T>` to store the elements, with optimizations for pre-allocating
-///   capacity when transitioning from `One` to `Many`.
+/// - `None`: Represents an empty collection with no elements. Uses zero heap allocations.
+/// - `One(T)`: Represents a collection with exactly one element. Uses zero heap allocations.
+/// - `Many(Vec<T>)`: Represents a collection with multiple elements. Uses a `Vec<T>` with
+///   pre-allocated capacity to minimize reallocations.
 ///
 /// ### Immutability
-/// All operations on `ZeroOneOrMany` are immutable. Methods like `with_pushed` and
-/// `with_inserted` consume the current instance and return a new instance with the
-/// desired modifications. This ensures that the original collection remains unchanged,
-/// promoting thread-safety and functional programming patterns.
+/// All operations are immutable, returning new instances to ensure thread-safety and
+/// functional programming patterns. Methods like `with_pushed` and `with_inserted`
+/// consume the current instance and produce a new one with the desired changes.
 ///
 /// ### Serialization and Deserialization
-/// `ZeroOneOrMany<T>` implements `Serialize` and `Deserialize` from the Serde library.
+/// Implements `Serialize` and `Deserialize` from the Serde library:
 /// - Serializes to a JSON array: `[]` for `None`, `[item]` for `One`, or multi-element
 ///   array for `Many`.
 /// - Deserializes from `null`, a single value, or an array.
 ///
 /// ### Performance
 /// - **Zero Allocation**: `None` and `One` variants avoid heap allocations.
-/// - **Pre-allocated Capacity**: Transitions from `One` to `Many` pre-allocate `Vec` capacity.
+/// - **Pre-allocated Capacity**: Transitions to `Many` pre-allocate `Vec` capacity.
 /// - **Inlined Methods**: Critical methods are marked `#[inline]` for performance.
-/// - **Minimal Cloning**: Most operations do not require `T: Clone`.
+/// - **Minimal Cloning**: Most operations do not require `T: Clone`, using references
+///   where possible.
 ///
 /// ### Examples
 /// ```rust
 /// let empty = ZeroOneOrMany::none();
 /// let single = ZeroOneOrMany::one(42);
 /// let multiple = ZeroOneOrMany::many(vec![1, 2, 3]);
+/// let pushed = single.with_pushed(43);
 /// ```
-#[derive(Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "hashbrown-json", derive(Serialize, Deserialize))]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ZeroOneOrMany<T> {
-    /// Empty collection with zero elements.
     None,
-    /// Collection containing exactly one element.
     One(T),
-    /// Collection containing multiple elements stored in a Vec.
     Many(Vec<T>),
 }
 
@@ -84,18 +77,79 @@ impl<T> ZeroOneOrMany<T> {
         }
     }
 
-    /// Merges multiple `ZeroOneOrMany`s into one, preserving order. Requires `T: Clone + 'static`.
+    /// Creates a collection from a hashbrown HashMap.
+    /// 
+    /// This enables the JSON object syntax when the `hashbrown-json` feature is enabled.
+    /// The HashMap's key-value pairs are collected into a vector of tuples.
+    /// 
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "hashbrown-json")]
+    /// # {
+    /// use cyrup_sugars::collections::ZeroOneOrMany;
+    /// use hashbrown::HashMap;
+    /// 
+    /// let map = hashbrown::hash_map! {
+    ///     "key1" => "value1",
+    ///     "key2" => "value2",
+    /// };
+    /// let collection: ZeroOneOrMany<(&str, &str)> = ZeroOneOrMany::from_hashmap(map);
+    /// # }
+    /// ```
+    #[cfg(feature = "hashbrown-json")]
+    #[inline]
+    pub fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> ZeroOneOrMany<(K, V)> {
+        let items: Vec<(K, V)> = map.into_iter().collect();
+        ZeroOneOrMany::many(items)
+    }
+
+    /// Creates a collection from a closure that returns a hashbrown HashMap.
+    /// 
+    /// This enables the clean JSON object syntax when the `hashbrown-json` feature is enabled.
+    /// This method is designed to work with the hashbrown macros.
+    /// 
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "hashbrown-json")]
+    /// # {
+    /// use cyrup_sugars::collections::ZeroOneOrMany;
+    /// use cyrup_sugars::macros::hashbrown::hash_map_fn;
+    /// 
+    /// let collection: ZeroOneOrMany<(&str, &str)> = ZeroOneOrMany::from_json(hash_map_fn! {
+    ///     "beta" => "true",
+    ///     "version" => "2.1.0",
+    /// });
+    /// # }
+    /// ```
+    #[cfg(feature = "hashbrown-json")]
+    #[inline]
+    pub fn from_json<K, V, F>(f: F) -> ZeroOneOrMany<(K, V)>
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+    {
+        Self::from_hashmap(f())
+    }
+
+    /// Merges multiple `ZeroOneOrMany`s into one, preserving order.
+    /// Requires `T: Clone` for owned iteration.
     #[inline]
     pub fn merge<I>(items: I) -> Self
     where
         I: IntoIterator<Item = ZeroOneOrMany<T>>,
-        T: Clone + 'static,
+        T: Clone,
     {
-        let vec: Vec<T> = items
-            .into_iter()
-            .flat_map(|zoom| zoom.into_iter())
-            .collect();
+        let vec: Vec<T> = items.into_iter().flat_map(|zoom| zoom.into_iter()).collect();
         Self::many(vec)
+    }
+
+    /// Merges references to multiple `ZeroOneOrMany`s into a new `ZeroOneOrMany<&T>`.
+    #[inline]
+    pub fn merge_refs<'a, I>(items: I) -> ZeroOneOrMany<&'a T>
+    where
+        I: IntoIterator<Item = &'a ZeroOneOrMany<T>>,
+    {
+        let vec: Vec<&T> = items.into_iter().flat_map(|zoom| zoom.iter()).collect();
+        ZeroOneOrMany::many(vec)
     }
 
     /// Returns the number of elements in the collection.
@@ -170,7 +224,7 @@ impl<T> ZeroOneOrMany<T> {
     pub fn with_inserted(self, idx: usize, item: T) -> Self {
         match self {
             ZeroOneOrMany::None if idx == 0 => ZeroOneOrMany::One(item),
-            ZeroOneOrMany::None => panic!("Index {} out of bounds for empty ZeroOneOrMany", idx),
+            ZeroOneOrMany::None => panic!("Index {} out of bounds", idx),
             ZeroOneOrMany::One(first) if idx == 0 => {
                 let mut vec = Vec::with_capacity(2);
                 vec.push(item);
@@ -183,10 +237,7 @@ impl<T> ZeroOneOrMany<T> {
                 vec.push(item);
                 ZeroOneOrMany::Many(vec)
             }
-            ZeroOneOrMany::One(_) => panic!(
-                "Index {} out of bounds for single-element ZeroOneOrMany",
-                idx
-            ),
+            ZeroOneOrMany::One(_) => panic!("Index {} out of bounds", idx),
             ZeroOneOrMany::Many(mut v) => {
                 v.insert(idx, item);
                 ZeroOneOrMany::Many(v)
@@ -225,17 +276,17 @@ impl<T> ZeroOneOrMany<T> {
 
     /// Returns an iterator over references to the elements.
     #[inline]
-    pub fn iter(&self) -> Box<dyn Iterator<Item = &T> + '_> {
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
         match self {
-            ZeroOneOrMany::None => Box::new([].iter()),
-            ZeroOneOrMany::One(item) => Box::new(std::iter::once(item)),
-            ZeroOneOrMany::Many(v) => Box::new(v.iter()),
+            ZeroOneOrMany::None => [].iter(),
+            ZeroOneOrMany::One(item) => std::iter::once(item),
+            ZeroOneOrMany::Many(v) => v.iter(),
         }
     }
 }
 
 // Owned iterator requires T: Clone
-impl<T: Clone + 'static> IntoIterator for ZeroOneOrMany<T> {
+impl<T: Clone> IntoIterator for ZeroOneOrMany<T> {
     type Item = T;
     type IntoIter = Box<dyn Iterator<Item = T>>;
     #[inline]
@@ -258,7 +309,8 @@ impl<'a, T> IntoIterator for &'a ZeroOneOrMany<T> {
     }
 }
 
-// Serde Support - already handled by derive macro
+// Serde Support
+impl<T: Serialize> Serialize for ZeroOneOrMany<T> {
     fn serialize<S: Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         match self {
             ZeroOneOrMany::None => {
@@ -281,7 +333,7 @@ impl<'a, T> IntoIterator for &'a ZeroOneOrMany<T> {
     }
 }
 
-// Deserialize already handled by derive macro
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for ZeroOneOrMany<T> {
     fn deserialize<D: Deserializer<'de>>(de: D) -> Result<Self, D::Error> {
         struct V<T>(PhantomData<T>);
         impl<'de, T: Deserialize<'de>> Visitor<'de> for V<T> {

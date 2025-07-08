@@ -1,38 +1,42 @@
+// -----------------------------------------------------------------------------
+// src/one_or_many.rs
+// -----------------------------------------------------------------------------
+
 use super::zero_one_or_many::ZeroOneOrMany;
-#[cfg(feature = "hashbrown-json")]
 use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
-#[cfg(feature = "hashbrown-json")]
 use serde::ser::{SerializeSeq, Serializer};
-#[cfg(feature = "hashbrown-json")]
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::iter::FromIterator;
-#[cfg(feature = "hashbrown-json")]
 use std::marker::PhantomData;
 
 /// A non-empty collection that holds one or many values of type `T`.
 ///
-/// This struct wraps `ZeroOneOrMany<T>` to ensure it always contains at least one element.
-/// Attempts to create an empty `OneOrMany` result in an `EmptyListError`.
+/// This struct wraps `ZeroOneOrMany<T>`, ensuring the `None` variant is never used.
+/// It guarantees at least one element, with attempts to create an empty collection
+/// resulting in an `EmptyListError`.
 ///
 /// ### Immutability
-/// All operations are immutable, returning new instances while preserving the non-empty invariant.
+/// All operations are immutable, returning new instances to preserve the non-empty
+/// invariant and ensure thread-safety.
 ///
 /// ### Serialization and Deserialization
-/// Serializes to a JSON array with at least one element. Deserialization fails on `null` or empty arrays.
+/// Serializes to a JSON array with at least one element. Deserialization fails on
+/// `null` or empty arrays, enforcing the non-empty constraint.
 ///
 /// ### Performance
-/// - **Zero Allocation**: Reuses allocations from `ZeroOneOrMany<T>` where possible.
-/// - **Inlined Methods**: Critical methods are optimized with `#[inline]`.
-/// - **Minimal Cloning**: Most operations avoid requiring `T: Clone`.
+/// - **Zero Allocation**: Reuses `ZeroOneOrMany<T>`'s allocation strategy (`None` and
+///   `One` avoid heap; `Many` pre-allocates).
+/// - **Inlined Methods**: Critical methods are marked `#[inline]` for performance.
+/// - **Minimal Cloning**: Most operations do not require `T: Clone`.
 ///
 /// ### Examples
 /// ```rust
 /// let single = OneOrMany::one(42);
 /// let multiple = OneOrMany::many(vec![1, 2, 3]).unwrap();
+/// let pushed = single.with_pushed(43);
 /// ```
-#[derive(Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "hashbrown-json", derive(Serialize, Deserialize))]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct OneOrMany<T>(ZeroOneOrMany<T>);
 
 /// Error returned when attempting to create a `OneOrMany` from an empty collection.
@@ -63,18 +67,82 @@ impl<T> OneOrMany<T> {
         }
     }
 
-    /// Merges multiple `OneOrMany`s into one. Requires `T: Clone + 'static`.
+    /// Creates a collection from a hashbrown HashMap, failing if empty.
+    /// 
+    /// This enables the JSON object syntax when the `hashbrown-json` feature is enabled.
+    /// The HashMap's key-value pairs are collected into a vector of tuples.
+    /// 
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "hashbrown-json")]
+    /// # {
+    /// use cyrup_sugars::collections::OneOrMany;
+    /// use hashbrown::HashMap;
+    /// 
+    /// let map = hashbrown::hash_map! {
+    ///     "key1" => "value1",
+    ///     "key2" => "value2",
+    /// };
+    /// let collection: OneOrMany<(&str, &str)> = OneOrMany::from_hashmap(map).unwrap();
+    /// # }
+    /// ```
+    #[cfg(feature = "hashbrown-json")]
+    #[inline]
+    pub fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<OneOrMany<(K, V)>, EmptyListError> {
+        let items: Vec<(K, V)> = map.into_iter().collect();
+        if items.is_empty() {
+            Err(EmptyListError)
+        } else {
+            Ok(OneOrMany(ZeroOneOrMany::Many(items)))
+        }
+    }
+
+    /// Creates a collection from a closure that returns a hashbrown HashMap, failing if empty.
+    /// 
+    /// This enables the clean JSON object syntax when the `hashbrown-json` feature is enabled.
+    /// This method is designed to work with the hashbrown macros.
+    /// 
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "hashbrown-json")]
+    /// # {
+    /// use cyrup_sugars::collections::OneOrMany;
+    /// use cyrup_sugars::macros::hashbrown::hash_map_fn;
+    /// 
+    /// let collection: OneOrMany<(&str, &str)> = OneOrMany::from_json(hash_map_fn! {
+    ///     "beta" => "true",
+    ///     "version" => "2.1.0",
+    /// }).unwrap();
+    /// # }
+    /// ```
+    #[cfg(feature = "hashbrown-json")]
+    #[inline]
+    pub fn from_json<K, V, F>(f: F) -> Result<OneOrMany<(K, V)>, EmptyListError>
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+    {
+        Self::from_hashmap(f())
+    }
+
+    /// Merges multiple `OneOrMany`s into one, preserving order. Requires `T: Clone`.
     #[inline]
     pub fn merge<I>(items: I) -> Result<Self, EmptyListError>
     where
         I: IntoIterator<Item = OneOrMany<T>>,
-        T: Clone + 'static,
+        T: Clone,
     {
-        let vec: Vec<T> = items
-            .into_iter()
-            .flat_map(|oom| oom.0.into_iter())
-            .collect();
+        let vec: Vec<T> = items.into_iter().flat_map(|oom| oom.0.into_iter()).collect();
         Self::many(vec)
+    }
+
+    /// Merges references to multiple `OneOrMany`s into a new `OneOrMany<&T>`.
+    #[inline]
+    pub fn merge_refs<'a, I>(items: I) -> Result<OneOrMany<&'a T>, EmptyListError>
+    where
+        I: IntoIterator<Item = &'a OneOrMany<T>>,
+    {
+        let vec: Vec<&T> = items.into_iter().flat_map(|oom| oom.iter()).collect();
+        OneOrMany::many(vec)
     }
 
     /// Returns the number of elements (always at least 1).
@@ -86,9 +154,7 @@ impl<T> OneOrMany<T> {
     /// Returns a reference to the first element.
     #[inline]
     pub fn first(&self) -> &T {
-        self.0
-            .first()
-            .expect("OneOrMany always has at least one element")
+        self.0.first().expect("OneOrMany always has at least one element")
     }
 
     /// Returns a vector of references to all elements after the first.
@@ -116,7 +182,7 @@ impl<T> OneOrMany<T> {
         OneOrMany(self.0.with_inserted(idx, item))
     }
 
-    /// Maps each element to a new type using a closure.
+    /// Maps each element to a new type, returning a new collection.
     #[inline]
     pub fn map<U, F: FnMut(T) -> U>(self, f: F) -> OneOrMany<U> {
         OneOrMany(self.0.map(f))
@@ -124,7 +190,10 @@ impl<T> OneOrMany<T> {
 
     /// Maps each element to a new type, propagating errors.
     #[inline]
-    pub fn try_map<U, E, F: FnMut(T) -> Result<U, E>>(self, f: F) -> Result<OneOrMany<U>, E> {
+    pub fn try_map<U, E, F: FnMut(T) -> Result<U, E>>(
+        self,
+        f: F,
+    ) -> Result<OneOrMany<U>, E> {
         self.0.try_map(f).map(OneOrMany)
     }
 
@@ -136,7 +205,7 @@ impl<T> OneOrMany<T> {
 }
 
 // Owned iterator requires T: Clone
-impl<T: Clone + 'static> IntoIterator for OneOrMany<T> {
+impl<T: Clone> IntoIterator for OneOrMany<T> {
     type Item = T;
     type IntoIter = Box<dyn Iterator<Item = T>>;
     #[inline]
@@ -155,9 +224,27 @@ impl<'a, T> IntoIterator for &'a OneOrMany<T> {
     }
 }
 
-// Serde Support is handled by derive macro on the struct
+// Serde Support
+impl<T: Serialize> Serialize for OneOrMany<T> {
+    fn serialize<S: Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        match &self.0 {
+            ZeroOneOrMany::None => unreachable!("OneOrMany cannot be None"),
+            ZeroOneOrMany::One(item) => {
+                let mut seq = ser.serialize_seq(Some(1))?;
+                seq.serialize_element(item)?;
+                seq.end()
+            }
+            ZeroOneOrMany::Many(v) => {
+                let mut seq = ser.serialize_seq(Some(v.len()))?;
+                for item in v {
+                    seq.serialize_element(item)?;
+                }
+                seq.end()
+            }
+        }
+    }
+}
 
-#[cfg(feature = "hashbrown-json")]
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for OneOrMany<T> {
     fn deserialize<D: Deserializer<'de>>(de: D) -> Result<Self, D::Error> {
         struct V<T>(PhantomData<T>);
@@ -179,7 +266,7 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for OneOrMany<T> {
                 if vec.is_empty() {
                     Err(de::Error::invalid_length(0, &"at least one element"))
                 } else {
-                    Ok(OneOrMany(ZeroOneOrMany::Many(vec)))
+                    Ok(OneOrMany(ZeroOneOrMany::many(vec)))
                 }
             }
 

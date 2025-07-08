@@ -76,6 +76,10 @@ pub use collections::{
     zero_one_or_many::ZeroOneOrMany,
 };
 
+// Re-export JSON extension traits when both features are enabled
+#[cfg(all(feature = "collections", feature = "hashbrown-json"))]
+pub use collections::{CollectionJsonExt, JsonObjectExt, TryCollectionJsonExt};
+
 // Re-export async utilities
 #[cfg(feature = "async")]
 pub use r#async::{

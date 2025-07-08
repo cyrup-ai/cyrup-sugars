@@ -5,3 +5,11 @@ pub mod byte_size;
 pub mod one_or_many;
 /// A collection that can hold zero, one, or many values, optimized for minimal allocations.
 pub mod zero_one_or_many;
+
+#[cfg(feature = "hashbrown-json")]
+/// Extension traits for JSON object syntax support
+pub mod json_ext;
+
+// Re-export extension traits
+#[cfg(feature = "hashbrown-json")]
+pub use json_ext::{CollectionJsonExt, JsonObjectExt, TryCollectionJsonExt};
