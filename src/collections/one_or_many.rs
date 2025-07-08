@@ -3,11 +3,15 @@
 // -----------------------------------------------------------------------------
 
 use super::zero_one_or_many::ZeroOneOrMany;
+#[cfg(feature = "serde")]
 use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
+#[cfg(feature = "serde")]
 use serde::ser::{SerializeSeq, Serializer};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::iter::FromIterator;
+#[cfg(feature = "serde")]
 use std::marker::PhantomData;
 
 /// A non-empty collection that holds one or many values of type `T`.
@@ -124,12 +128,12 @@ impl<T> OneOrMany<T> {
         Self::from_hashmap(f())
     }
 
-    /// Merges multiple `OneOrMany`s into one, preserving order. Requires `T: Clone`.
+    /// Merges multiple `OneOrMany`s into one, preserving order. Requires `T: Clone + 'static`.
     #[inline]
     pub fn merge<I>(items: I) -> Result<Self, EmptyListError>
     where
         I: IntoIterator<Item = OneOrMany<T>>,
-        T: Clone,
+        T: Clone + 'static,
     {
         let vec: Vec<T> = items.into_iter().flat_map(|oom| oom.0.into_iter()).collect();
         Self::many(vec)
@@ -204,8 +208,8 @@ impl<T> OneOrMany<T> {
     }
 }
 
-// Owned iterator requires T: Clone
-impl<T: Clone> IntoIterator for OneOrMany<T> {
+// Owned iterator requires T: Clone + 'static
+impl<T: Clone + 'static> IntoIterator for OneOrMany<T> {
     type Item = T;
     type IntoIter = Box<dyn Iterator<Item = T>>;
     #[inline]
@@ -225,6 +229,7 @@ impl<'a, T> IntoIterator for &'a OneOrMany<T> {
 }
 
 // Serde Support
+#[cfg(feature = "serde")]
 impl<T: Serialize> Serialize for OneOrMany<T> {
     fn serialize<S: Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         match &self.0 {
@@ -245,6 +250,7 @@ impl<T: Serialize> Serialize for OneOrMany<T> {
     }
 }
 
+#[cfg(feature = "serde")]
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for OneOrMany<T> {
     fn deserialize<D: Deserializer<'de>>(de: D) -> Result<Self, D::Error> {
         struct V<T>(PhantomData<T>);

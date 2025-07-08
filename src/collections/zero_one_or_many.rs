@@ -2,11 +2,16 @@
 // src/zero_one_or_many.rs
 // -----------------------------------------------------------------------------
 
+#[cfg(feature = "serde")]
 use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
+#[cfg(feature = "serde")]
 use serde::ser::{SerializeSeq, Serializer};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use std::fmt;
 use std::iter::FromIterator;
+#[cfg(feature = "serde")]
+use std::fmt;
+#[cfg(feature = "serde")]
 use std::marker::PhantomData;
 
 /// A collection that can hold zero, one, or many values of type `T`.
@@ -48,8 +53,11 @@ use std::marker::PhantomData;
 /// ```
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ZeroOneOrMany<T> {
+    /// Empty collection with zero elements
     None,
+    /// Collection with exactly one element
     One(T),
+    /// Collection with multiple elements stored in a Vec
     Many(Vec<T>),
 }
 
@@ -131,12 +139,12 @@ impl<T> ZeroOneOrMany<T> {
     }
 
     /// Merges multiple `ZeroOneOrMany`s into one, preserving order.
-    /// Requires `T: Clone` for owned iteration.
+    /// Requires `T: Clone + 'static` for owned iteration.
     #[inline]
     pub fn merge<I>(items: I) -> Self
     where
         I: IntoIterator<Item = ZeroOneOrMany<T>>,
-        T: Clone,
+        T: Clone + 'static,
     {
         let vec: Vec<T> = items.into_iter().flat_map(|zoom| zoom.into_iter()).collect();
         Self::many(vec)
@@ -276,17 +284,17 @@ impl<T> ZeroOneOrMany<T> {
 
     /// Returns an iterator over references to the elements.
     #[inline]
-    pub fn iter(&self) -> impl Iterator<Item = &T> {
+    pub fn iter(&self) -> Box<dyn Iterator<Item = &T> + '_> {
         match self {
-            ZeroOneOrMany::None => [].iter(),
-            ZeroOneOrMany::One(item) => std::iter::once(item),
-            ZeroOneOrMany::Many(v) => v.iter(),
+            ZeroOneOrMany::None => Box::new([].iter()),
+            ZeroOneOrMany::One(item) => Box::new(std::iter::once(item)),
+            ZeroOneOrMany::Many(v) => Box::new(v.iter()),
         }
     }
 }
 
-// Owned iterator requires T: Clone
-impl<T: Clone> IntoIterator for ZeroOneOrMany<T> {
+// Owned iterator requires T: Clone + 'static
+impl<T: Clone + 'static> IntoIterator for ZeroOneOrMany<T> {
     type Item = T;
     type IntoIter = Box<dyn Iterator<Item = T>>;
     #[inline]
@@ -310,6 +318,7 @@ impl<'a, T> IntoIterator for &'a ZeroOneOrMany<T> {
 }
 
 // Serde Support
+#[cfg(feature = "serde")]
 impl<T: Serialize> Serialize for ZeroOneOrMany<T> {
     fn serialize<S: Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
         match self {
@@ -333,6 +342,7 @@ impl<T: Serialize> Serialize for ZeroOneOrMany<T> {
     }
 }
 
+#[cfg(feature = "serde")]
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for ZeroOneOrMany<T> {
     fn deserialize<D: Deserializer<'de>>(de: D) -> Result<Self, D::Error> {
         struct V<T>(PhantomData<T>);
