@@ -1,0 +1,50 @@
+[package]
+name = "cyrup_sugars"
+version = "0.1.0"
+edition = "2021"
+authors = ["CYRUP Contributors"]
+description = "Syntactic sugar utilities for Rust - collections, async patterns, and macros"
+repository = "https://github.com/cyrup/cyrup_sugars"
+license = "MIT OR Apache-2.0"
+keywords = ["async", "collections", "macros", "utilities", "sugar"]
+categories = ["asynchronous", "data-structures", "rust-patterns"]
+
+[lib]
+name = "cyrup_sugars"
+path = "src/lib.rs"
+
+[features]
+default = ["std", "collections", "async", "macros"]
+std = []
+collections = ["std"]
+async = ["tokio-async"]
+tokio-async = ["std", "tokio", "futures", "parking_lot"]
+std-async = ["std", "futures", "async-channel"]
+crossbeam-async = ["std", "crossbeam", "futures", "async-channel"]
+macros = ["hashbrown"]
+gix-interop = ["gix-hash", "parking_lot"]
+hashbrown-json = ["macros", "serde", "serde_json"]
+full = ["std", "collections", "tokio-async", "std-async", "crossbeam-async", "macros", "gix-interop", "hashbrown-json"]
+
+# Feature for enabling all examples
+examples = []
+
+[dependencies]
+serde = { version = "1.0.219", features = ["derive"], optional = true }
+serde_json = { version = "1.0.140", optional = true }
+hashbrown = { version = "0.15.4", optional = true }
+gix-hash = { version = "0.18.0", optional = true }
+tokio = { version = "1.46.1", features = ["rt", "sync", "macros"], optional = true }
+futures = { version = "0.3.31", optional = true }
+parking_lot = { version = "0.12.4", optional = true }
+crossbeam = { version = "0.8.4", optional = true }
+async-channel = { version = "2.5.0", optional = true }
+
+[dev-dependencies]
+tokio = { version = "1.46.1", features = ["full", "test-util"] }
+tokio-test = "0.4.4"
+criterion = "0.6.0"
+proptest = "1.7.0"
+pretty_assertions = "1.4.1"
+serde_json = "1.0.140"
+
