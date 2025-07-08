@@ -246,8 +246,8 @@ mod tests {
     fn test_serde_serialization() {
         use serde_json;
         let size = ByteSize::megabytes(5);
-        let serialized = serde_json::to_string(&size).unwrap();
-        let deserialized: ByteSize = serde_json::from_str(&serialized).unwrap();
+        let serialized = serde_json::to_string(&size).expect("test serialization");
+        let deserialized: ByteSize = serde_json::from_str(&serialized).expect("test deserialization");
         assert_eq!(size, deserialized);
     }
 
@@ -256,8 +256,8 @@ mod tests {
     fn test_serde_zero() {
         use serde_json;
         let size = ByteSize::bytes(0);
-        let serialized = serde_json::to_string(&size).unwrap();
-        let deserialized: ByteSize = serde_json::from_str(&serialized).unwrap();
+        let serialized = serde_json::to_string(&size).expect("test serialization");
+        let deserialized: ByteSize = serde_json::from_str(&serialized).expect("test deserialization");
         assert_eq!(size, deserialized);
     }
 
@@ -266,8 +266,8 @@ mod tests {
     fn test_serde_large() {
         use serde_json;
         let size = ByteSize::bytes(usize::MAX);
-        let serialized = serde_json::to_string(&size).unwrap();
-        let deserialized: ByteSize = serde_json::from_str(&serialized).unwrap();
+        let serialized = serde_json::to_string(&size).expect("test serialization");
+        let deserialized: ByteSize = serde_json::from_str(&serialized).expect("test deserialization");
         assert_eq!(size, deserialized);
     }
 

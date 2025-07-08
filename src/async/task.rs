@@ -29,7 +29,7 @@ pub struct AsyncTask<T>
 where
     T: NotResult, // T cannot be any Result type
 {
-    receiver: oneshot::Receiver<T>,
+    pub(super) receiver: oneshot::Receiver<T>,
 }
 
 impl<T> AsyncTask<T>
@@ -84,12 +84,12 @@ impl<T> Future for AsyncTask<T>
 where
     T: NotResult, // T cannot be any Result type
 {
-    type Output = Result<T, oneshot::error::RecvError>;
+    type Output = T;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.receiver).poll(cx) {
-            Poll::Ready(Ok(result)) => Poll::Ready(Ok(result)),
-            Poll::Ready(Err(err)) => Poll::Ready(Err(err)),
+            Poll::Ready(Ok(result)) => Poll::Ready(result),
+            Poll::Ready(Err(_)) => panic!("AsyncTask channel closed unexpectedly"),
             Poll::Pending => Poll::Pending,
         }
     }

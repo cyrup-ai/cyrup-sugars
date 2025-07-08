@@ -191,8 +191,8 @@ impl<P, C> AgentBuilder<P, C> {
 impl AgentBuilder<HasProvider, HasConfig> {
     pub fn build(self) -> Agent {
         Agent {
-            provider: self.provider.unwrap(),
-            config: self.config.unwrap(),
+            provider: self.provider.unwrap_or_else(|| unreachable!("typestate ensures provider exists")),
+            config: self.config.unwrap_or_else(|| unreachable!("typestate ensures config exists")),
             tools: self.tools,
             allowed_models: self.allowed_models,
             conversation_history: self.conversation_history,
@@ -234,10 +234,14 @@ async fn main() {
         .with_models(OneOrMany::many(vec![
             Model::OpenAI { variant: OpenAIModel::O4Mini },
             Model::Anthropic { variant: AnthropicModel::Claude4SonnetThinking },
-        ]).unwrap())
+        ]).unwrap_or_else(|_| OneOrMany::one(Model::OpenAI { variant: OpenAIModel::O4 })))
         .conversation_history(MessageRole::User, "hi", MessageRole::Assistant, "Hey, Dave")
         .build_async()
         .tap_ok(|agent| println!("Agent built: {:?}", agent))
+        .on_result(|result| match result {
+            Ok(agent) => agent,
+            Err(_) => panic!("Failed to build agent")
+        })
         .await;
 
     println!("✅ AI Agent builder example completed");

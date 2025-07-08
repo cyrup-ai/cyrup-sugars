@@ -21,7 +21,7 @@ pub trait StreamExt<T>: Sized + 'static {
     /// Processes each chunk in the stream with the provided function.
     fn on_chunk<F, U>(self, f: F) -> AsyncStream<U>
     where
-        F: FnMut(T) -> U + Send + 'static,
+        F: FnMut(Result<T, Error>) -> U + Send + 'static,
         U: Send + 'static + NotResult;
 
     /// Processes each error in the stream with the provided function.
@@ -103,7 +103,7 @@ impl<T: Clone + Send + 'static + NotResult> StreamExt<T> for AsyncStream<T> {
     fn on_chunk<F, U>(self, mut f: F) -> AsyncStream<U>
     where
         Self: Send + 'static,
-        F: FnMut(T) -> U + Send + 'static,
+        F: FnMut(Result<T, Error>) -> U + Send + 'static,
         U: Send + 'static + NotResult,
     {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
@@ -112,7 +112,8 @@ impl<T: Clone + Send + 'static + NotResult> StreamExt<T> for AsyncStream<T> {
             use futures::StreamExt;
             let mut stream = self;
             while let Some(item) = stream.next().await {
-                if tx.send(f(item)).is_err() {
+                let result = f(Ok(item));
+                if tx.send(result).is_err() {
                     break;
                 }
             }

@@ -6,143 +6,320 @@
 #[cfg(feature = "hashbrown-json")]
 use super::{one_or_many::{EmptyListError, OneOrMany}, zero_one_or_many::ZeroOneOrMany};
 
-/// Extension trait for types that can be constructed from hashbrown HashMap syntax.
-/// 
-/// This trait enables the JSON object syntax `{"key" => "value"}` for collection types
-/// when used with the hashbrown macros.
+/// Marker trait to exclude String types from generic implementations
 #[cfg(feature = "hashbrown-json")]
-pub trait JsonObjectExt: Sized {
+pub auto trait NotString {}
+
+#[cfg(feature = "hashbrown-json")]
+impl !NotString for String {}
+
+/// Extension trait for types that can be constructed from hashbrown HashMap syntax - String,String case.
+#[cfg(feature = "hashbrown-json")]
+pub trait JsonObjectExtStringString: Sized {
     /// The error type returned when construction fails.
     type Error;
     
     /// Creates an instance from a hashbrown HashMap.
     fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error>
     where
-        Self: From<Vec<(K, V)>> + TryFrom<Vec<(K, V)>, Error = Self::Error>;
+        K: Into<String>,
+        V: Into<String>;
     
     /// Creates an instance from a closure that returns a hashbrown HashMap.
-    /// 
-    /// This method is designed to work seamlessly with the hashbrown macros.
     fn from_json<K, V, F>(f: F) -> Result<Self, Self::Error>
-    where
-        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
-        Self: From<Vec<(K, V)>> + TryFrom<Vec<(K, V)>, Error = Self::Error>,
-    {
-        Self::from_hashmap(f())
-    }
-}
-
-/// Extension trait for Vec<T> to support JSON object syntax.
-#[cfg(feature = "hashbrown-json")]
-impl<T> JsonObjectExt for Vec<T> {
-    type Error = std::convert::Infallible;
-    
-    fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error>
-    where
-        Self: From<Vec<(K, V)>> + TryFrom<Vec<(K, V)>, Error = Self::Error>,
-    {
-        Ok(map.into_iter().collect())
-    }
-}
-
-/// Extension trait for Option<T> to support JSON object syntax.
-#[cfg(feature = "hashbrown-json")]
-impl<T> JsonObjectExt for Option<Vec<T>> {
-    type Error = std::convert::Infallible;
-    
-    fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error>
-    where
-        Self: From<Vec<(K, V)>> + TryFrom<Vec<(K, V)>, Error = Self::Error>,
-    {
-        let items: Vec<(K, V)> = map.into_iter().collect();
-        Ok(if items.is_empty() { None } else { Some(items) })
-    }
-}
-
-/// Extension methods for creating collections from JSON object syntax.
-#[cfg(feature = "hashbrown-json")]
-pub trait CollectionJsonExt {
-    /// Creates a collection from a closure that returns a hashbrown HashMap.
-    /// 
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "hashbrown-json")]
-    /// # {
-    /// use cyrup_sugars::collections::{CollectionJsonExt, ZeroOneOrMany};
-    /// use cyrup_sugars::macros::hashbrown::hash_map_fn;
-    /// 
-    /// let collection: ZeroOneOrMany<(&str, &str)> = ZeroOneOrMany::json(hash_map_fn! {
-    ///     "beta" => "true",
-    ///     "version" => "2.1.0",
-    /// });
-    /// # }
-    /// ```
-    fn json<K, V, F>(f: F) -> Self
-    where
-        F: FnOnce() -> ::hashbrown::HashMap<K, V>;
-}
-
-/// Extension methods for creating collections that may fail from JSON object syntax.
-#[cfg(feature = "hashbrown-json")]
-pub trait TryCollectionJsonExt {
-    /// The error type returned when construction fails.
-    type Error;
-    
-    /// Creates a collection from a closure that returns a hashbrown HashMap.
-    /// 
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "hashbrown-json")]
-    /// # {
-    /// use cyrup_sugars::collections::{TryCollectionJsonExt, OneOrMany};
-    /// use cyrup_sugars::macros::hashbrown::hash_map_fn;
-    /// 
-    /// let collection: OneOrMany<(&str, &str)> = OneOrMany::try_json(hash_map_fn! {
-    ///     "beta" => "true",
-    ///     "version" => "2.1.0",
-    /// }).unwrap();
-    /// # }
-    /// ```
-    fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
-    where
-        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
-        Self: Sized;
-}
-
-#[cfg(feature = "hashbrown-json")]
-impl CollectionJsonExt for ZeroOneOrMany<(String, String)> {
-    fn json<K, V, F>(f: F) -> Self
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
         K: Into<String>,
         V: Into<String>,
     {
-        let map = f();
-        let items: Vec<(String, String)> = map.into_iter()
-            .map(|(k, v)| (k.into(), v.into()))
-            .collect();
-        ZeroOneOrMany::many(items)
+        Self::from_hashmap(f())
     }
 }
 
+/// Extension trait for types that can be constructed from hashbrown HashMap syntax - String,V case.
 #[cfg(feature = "hashbrown-json")]
-impl<K, V> CollectionJsonExt for ZeroOneOrMany<(K, V)> {
-    fn json<K2, V2, F>(f: F) -> Self
+pub trait JsonObjectExtStringV<V1: NotString>: Sized {
+    /// The error type returned when construction fails.
+    type Error;
+    
+    /// Creates an instance from a hashbrown HashMap.
+    fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error>
     where
-        F: FnOnce() -> ::hashbrown::HashMap<K2, V2>,
-        K2: Into<K>,
-        V2: Into<V>,
+        K: Into<String>,
+        V: Into<V1>;
+    
+    /// Creates an instance from a closure that returns a hashbrown HashMap.
+    fn from_json<K, V, F>(f: F) -> Result<Self, Self::Error>
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<String>,
+        V: Into<V1>,
     {
-        ZeroOneOrMany::from_json(|| {
-            f().into_iter()
-                .map(|(k, v)| (k.into(), v.into()))
-                .collect::<::hashbrown::HashMap<K, V>>()
-        })
+        Self::from_hashmap(f())
     }
 }
 
+/// Extension trait for types that can be constructed from hashbrown HashMap syntax - K,String case.
 #[cfg(feature = "hashbrown-json")]
-impl TryCollectionJsonExt for OneOrMany<(String, String)> {
+pub trait JsonObjectExtKString<K1: NotString>: Sized {
+    /// The error type returned when construction fails.
+    type Error;
+    
+    /// Creates an instance from a hashbrown HashMap.
+    fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error>
+    where
+        K: Into<K1>,
+        V: Into<String>;
+    
+    /// Creates an instance from a closure that returns a hashbrown HashMap.
+    fn from_json<K, V, F>(f: F) -> Result<Self, Self::Error>
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<K1>,
+        V: Into<String>,
+    {
+        Self::from_hashmap(f())
+    }
+}
+
+/// Extension trait for types that can be constructed from hashbrown HashMap syntax - K,V case.
+#[cfg(feature = "hashbrown-json")]
+pub trait JsonObjectExtKV<K1: NotString, V1: NotString>: Sized {
+    /// The error type returned when construction fails.
+    type Error;
+    
+    /// Creates an instance from a hashbrown HashMap.
+    fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error>
+    where
+        K: Into<K1>,
+        V: Into<V1>;
+    
+    /// Creates an instance from a closure that returns a hashbrown HashMap.
+    fn from_json<K, V, F>(f: F) -> Result<Self, Self::Error>
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<K1>,
+        V: Into<V1>,
+    {
+        Self::from_hashmap(f())
+    }
+}
+
+/// Extension trait for Vec<(String, String)> to support JSON object syntax.
+#[cfg(feature = "hashbrown-json")]
+impl JsonObjectExtStringString for Vec<(String, String)> {
+    type Error = std::convert::Infallible;
+    
+    fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error> 
+    where
+        K: Into<String>,
+        V: Into<String>,
+    {
+        Ok(map.into_iter().map(|(k, v)| (k.into(), v.into())).collect())
+    }
+}
+
+/// Extension trait for Vec<(String, V1)> to support JSON object syntax.
+#[cfg(feature = "hashbrown-json")]
+impl<V1: NotString> JsonObjectExtStringV<V1> for Vec<(String, V1)> {
+    type Error = std::convert::Infallible;
+    
+    fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error> 
+    where
+        K: Into<String>,
+        V: Into<V1>,
+    {
+        Ok(map.into_iter().map(|(k, v)| (k.into(), v.into())).collect())
+    }
+}
+
+/// Extension trait for Vec<(K1, String)> to support JSON object syntax.
+#[cfg(feature = "hashbrown-json")]
+impl<K1: NotString> JsonObjectExtKString<K1> for Vec<(K1, String)> {
+    type Error = std::convert::Infallible;
+    
+    fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error> 
+    where
+        K: Into<K1>,
+        V: Into<String>,
+    {
+        Ok(map.into_iter().map(|(k, v)| (k.into(), v.into())).collect())
+    }
+}
+
+/// Extension trait for Vec<(K1, V1)> to support JSON object syntax.
+#[cfg(feature = "hashbrown-json")]
+impl<K1: NotString, V1: NotString> JsonObjectExtKV<K1, V1> for Vec<(K1, V1)> {
+    type Error = std::convert::Infallible;
+    
+    fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error> 
+    where
+        K: Into<K1>,
+        V: Into<V1>,
+    {
+        Ok(map.into_iter().map(|(k, v)| (k.into(), v.into())).collect())
+    }
+}
+
+/// Extension trait for Option<Vec<(String, String)>> to support JSON object syntax.
+#[cfg(feature = "hashbrown-json")]
+impl JsonObjectExtStringString for Option<Vec<(String, String)>> {
+    type Error = std::convert::Infallible;
+    
+    fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error> 
+    where
+        K: Into<String>,
+        V: Into<String>,
+    {
+        let items: Vec<(String, String)> = map.into_iter().map(|(k, v)| (k.into(), v.into())).collect();
+        Ok(if items.is_empty() { None } else { Some(items) })
+    }
+}
+
+/// Extension trait for Option<Vec<(String, V1)>> to support JSON object syntax.
+#[cfg(feature = "hashbrown-json")]
+impl<V1: NotString> JsonObjectExtStringV<V1> for Option<Vec<(String, V1)>> {
+    type Error = std::convert::Infallible;
+    
+    fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error> 
+    where
+        K: Into<String>,
+        V: Into<V1>,
+    {
+        let items: Vec<(String, V1)> = map.into_iter().map(|(k, v)| (k.into(), v.into())).collect();
+        Ok(if items.is_empty() { None } else { Some(items) })
+    }
+}
+
+/// Extension trait for Option<Vec<(K1, String)>> to support JSON object syntax.
+#[cfg(feature = "hashbrown-json")]
+impl<K1: NotString> JsonObjectExtKString<K1> for Option<Vec<(K1, String)>> {
+    type Error = std::convert::Infallible;
+    
+    fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error> 
+    where
+        K: Into<K1>,
+        V: Into<String>,
+    {
+        let items: Vec<(K1, String)> = map.into_iter().map(|(k, v)| (k.into(), v.into())).collect();
+        Ok(if items.is_empty() { None } else { Some(items) })
+    }
+}
+
+/// Extension trait for Option<Vec<(K1, V1)>> to support JSON object syntax.
+#[cfg(feature = "hashbrown-json")]
+impl<K1: NotString, V1: NotString> JsonObjectExtKV<K1, V1> for Option<Vec<(K1, V1)>> {
+    type Error = std::convert::Infallible;
+    
+    fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error> 
+    where
+        K: Into<K1>,
+        V: Into<V1>,
+    {
+        let items: Vec<(K1, V1)> = map.into_iter().map(|(k, v)| (k.into(), v.into())).collect();
+        Ok(if items.is_empty() { None } else { Some(items) })
+    }
+}
+
+/// Extension methods for creating collections from JSON object syntax - String,String case.
+#[cfg(feature = "hashbrown-json")]
+pub trait CollectionJsonExtStringString {
+    fn json<K, V, F>(f: F) -> Self
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<String>,
+        V: Into<String>;
+}
+
+/// Extension methods for creating collections from JSON object syntax - String,V case.
+#[cfg(feature = "hashbrown-json")]
+pub trait CollectionJsonExtStringV<V1: NotString> {
+    fn json<K, V, F>(f: F) -> Self
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<String>,
+        V: Into<V1>;
+}
+
+/// Extension methods for creating collections from JSON object syntax - K,String case.
+#[cfg(feature = "hashbrown-json")]
+pub trait CollectionJsonExtKString<K1: NotString> {
+    fn json<K, V, F>(f: F) -> Self
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<K1>,
+        V: Into<String>;
+}
+
+/// Extension methods for creating collections from JSON object syntax - K,V case.
+#[cfg(feature = "hashbrown-json")]
+pub trait CollectionJsonExtKV<K1: NotString, V1: NotString> {
+    fn json<K, V, F>(f: F) -> Self
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<K1>,
+        V: Into<V1>;
+}
+
+/// Extension methods for creating collections that may fail from JSON object syntax - String,String case.
+#[cfg(feature = "hashbrown-json")]
+pub trait TryCollectionJsonExtStringString {
+    /// The error type returned when construction fails.
+    type Error;
+    
+    fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<String>,
+        V: Into<String>,
+        Self: Sized;
+}
+
+/// Extension methods for creating collections that may fail from JSON object syntax - String,V case.
+#[cfg(feature = "hashbrown-json")]
+pub trait TryCollectionJsonExtStringV<V1: NotString> {
+    /// The error type returned when construction fails.
+    type Error;
+    
+    fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<String>,
+        V: Into<V1>,
+        Self: Sized;
+}
+
+/// Extension methods for creating collections that may fail from JSON object syntax - K,String case.
+#[cfg(feature = "hashbrown-json")]
+pub trait TryCollectionJsonExtKString<K1: NotString> {
+    /// The error type returned when construction fails.
+    type Error;
+    
+    fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<K1>,
+        V: Into<String>,
+        Self: Sized;
+}
+
+/// Extension methods for creating collections that may fail from JSON object syntax - K,V case.
+#[cfg(feature = "hashbrown-json")]
+pub trait TryCollectionJsonExtKV<K1: NotString, V1: NotString> {
+    /// The error type returned when construction fails.
+    type Error;
+    
+    fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<K1>,
+        V: Into<V1>,
+        Self: Sized;
+}
+
+
+#[cfg(feature = "hashbrown-json")]
+impl TryCollectionJsonExtStringString for OneOrMany<(String, String)> {
     type Error = EmptyListError;
     
     fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
@@ -160,25 +337,71 @@ impl TryCollectionJsonExt for OneOrMany<(String, String)> {
 }
 
 #[cfg(feature = "hashbrown-json")]
-impl<K, V> TryCollectionJsonExt for OneOrMany<(K, V)> {
+impl<V1> TryCollectionJsonExtStringV<V1> for OneOrMany<(String, V1)> 
+where
+    V1: NotString,
+{
     type Error = EmptyListError;
     
-    fn try_json<K2, V2, F>(f: F) -> Result<Self, Self::Error>
+    fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
     where
-        F: FnOnce() -> ::hashbrown::HashMap<K2, V2>,
-        K2: Into<K>,
-        V2: Into<V>,
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<String>,
+        V: Into<V1>,
     {
-        OneOrMany::from_json(|| {
-            f().into_iter()
-                .map(|(k, v)| (k.into(), v.into()))
-                .collect::<::hashbrown::HashMap<K, V>>()
-        })
+        let map = f();
+        let items: Vec<(String, V1)> = map.into_iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect();
+        OneOrMany::many(items)
     }
 }
 
 #[cfg(feature = "hashbrown-json")]
-impl CollectionJsonExt for Vec<(String, String)> {
+impl<K1> TryCollectionJsonExtKString<K1> for OneOrMany<(K1, String)> 
+where
+    K1: NotString,
+{
+    type Error = EmptyListError;
+    
+    fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<K1>,
+        V: Into<String>,
+    {
+        let map = f();
+        let items: Vec<(K1, String)> = map.into_iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect();
+        OneOrMany::many(items)
+    }
+}
+
+#[cfg(feature = "hashbrown-json")]
+impl<K1, V1> TryCollectionJsonExtKV<K1, V1> for OneOrMany<(K1, V1)> 
+where
+    K1: NotString,
+    V1: NotString,
+{
+    type Error = EmptyListError;
+    
+    fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<K1>,
+        V: Into<V1>,
+    {
+        let map = f();
+        let items: Vec<(K1, V1)> = map.into_iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect();
+        OneOrMany::many(items)
+    }
+}
+
+#[cfg(feature = "hashbrown-json")]
+impl CollectionJsonExtStringString for Vec<(String, String)> {
     fn json<K, V, F>(f: F) -> Self
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
@@ -192,15 +415,211 @@ impl CollectionJsonExt for Vec<(String, String)> {
 }
 
 #[cfg(feature = "hashbrown-json")]
-impl<K, V> CollectionJsonExt for Vec<(K, V)> {
-    fn json<K2, V2, F>(f: F) -> Self
+impl<V1> CollectionJsonExtStringV<V1> for Vec<(String, V1)> 
+where
+    V1: NotString,
+{
+    fn json<K, V, F>(f: F) -> Self
     where
-        F: FnOnce() -> ::hashbrown::HashMap<K2, V2>,
-        K2: Into<K>,
-        V2: Into<V>,
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<String>,
+        V: Into<V1>,
     {
         f().into_iter()
             .map(|(k, v)| (k.into(), v.into()))
             .collect()
+    }
+}
+
+#[cfg(feature = "hashbrown-json")]
+impl<K1> CollectionJsonExtKString<K1> for Vec<(K1, String)> 
+where
+    K1: NotString,
+{
+    fn json<K, V, F>(f: F) -> Self
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<K1>,
+        V: Into<String>,
+    {
+        f().into_iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect()
+    }
+}
+
+#[cfg(feature = "hashbrown-json")]
+impl<K1, V1> CollectionJsonExtKV<K1, V1> for Vec<(K1, V1)> 
+where
+    K1: NotString,
+    V1: NotString,
+{
+    fn json<K, V, F>(f: F) -> Self
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<K1>,
+        V: Into<V1>,
+    {
+        f().into_iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect()
+    }
+}
+
+// ZeroOneOrMany implementations
+#[cfg(feature = "hashbrown-json")]
+impl CollectionJsonExtStringString for ZeroOneOrMany<(String, String)> {
+    fn json<K, V, F>(f: F) -> Self
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<String>,
+        V: Into<String>,
+    {
+        let map = f();
+        let items: Vec<(String, String)> = map.into_iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect();
+        ZeroOneOrMany::many(items)
+    }
+}
+
+#[cfg(feature = "hashbrown-json")]
+impl<V1> CollectionJsonExtStringV<V1> for ZeroOneOrMany<(String, V1)> 
+where
+    V1: NotString,
+{
+    fn json<K, V, F>(f: F) -> Self
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<String>,
+        V: Into<V1>,
+    {
+        let map = f();
+        let items: Vec<(String, V1)> = map.into_iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect();
+        ZeroOneOrMany::many(items)
+    }
+}
+
+#[cfg(feature = "hashbrown-json")]
+impl<K1> CollectionJsonExtKString<K1> for ZeroOneOrMany<(K1, String)> 
+where
+    K1: NotString,
+{
+    fn json<K, V, F>(f: F) -> Self
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<K1>,
+        V: Into<String>,
+    {
+        let map = f();
+        let items: Vec<(K1, String)> = map.into_iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect();
+        ZeroOneOrMany::many(items)
+    }
+}
+
+#[cfg(feature = "hashbrown-json")]
+impl<K1, V1> CollectionJsonExtKV<K1, V1> for ZeroOneOrMany<(K1, V1)> 
+where
+    K1: NotString,
+    V1: NotString,
+{
+    fn json<K, V, F>(f: F) -> Self
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<K1>,
+        V: Into<V1>,
+    {
+        let map = f();
+        let items: Vec<(K1, V1)> = map.into_iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect();
+        ZeroOneOrMany::many(items)
+    }
+}
+
+// ZeroOneOrMany TryCollectionJsonExt implementations
+#[cfg(feature = "hashbrown-json")]
+impl TryCollectionJsonExtStringString for ZeroOneOrMany<(String, String)> {
+    type Error = std::convert::Infallible;
+    
+    fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<String>,
+        V: Into<String>,
+    {
+        let map = f();
+        let items: Vec<(String, String)> = map.into_iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect();
+        Ok(ZeroOneOrMany::many(items))
+    }
+}
+
+#[cfg(feature = "hashbrown-json")]
+impl<V1> TryCollectionJsonExtStringV<V1> for ZeroOneOrMany<(String, V1)> 
+where
+    V1: NotString,
+{
+    type Error = std::convert::Infallible;
+    
+    fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<String>,
+        V: Into<V1>,
+    {
+        let map = f();
+        let items: Vec<(String, V1)> = map.into_iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect();
+        Ok(ZeroOneOrMany::many(items))
+    }
+}
+
+#[cfg(feature = "hashbrown-json")]
+impl<K1> TryCollectionJsonExtKString<K1> for ZeroOneOrMany<(K1, String)> 
+where
+    K1: NotString,
+{
+    type Error = std::convert::Infallible;
+    
+    fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<K1>,
+        V: Into<String>,
+    {
+        let map = f();
+        let items: Vec<(K1, String)> = map.into_iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect();
+        Ok(ZeroOneOrMany::many(items))
+    }
+}
+
+#[cfg(feature = "hashbrown-json")]
+impl<K1, V1> TryCollectionJsonExtKV<K1, V1> for ZeroOneOrMany<(K1, V1)> 
+where
+    K1: NotString,
+    V1: NotString,
+{
+    type Error = std::convert::Infallible;
+    
+    fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
+    where
+        F: FnOnce() -> ::hashbrown::HashMap<K, V>,
+        K: Into<K1>,
+        V: Into<V1>,
+    {
+        let map = f();
+        let items: Vec<(K1, V1)> = map.into_iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect();
+        Ok(ZeroOneOrMany::many(items))
     }
 }

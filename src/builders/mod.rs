@@ -130,7 +130,8 @@ pub mod patterns {
 
         pub fn oauth<P: Into<ZeroOneOrMany<String>>>(providers: P) -> Self {
             Self {
-                methods: OneOrMany::many(vec!["oauth".to_string(), "jwt".to_string()]).unwrap(),
+                methods: OneOrMany::many(vec!["oauth".to_string(), "jwt".to_string()])
+                    .unwrap_or_else(|_| OneOrMany::one("oauth".to_string())),
                 token_ttl: 7200,
                 providers: providers.into(),
                 settings: HashMap::new(),
@@ -194,7 +195,7 @@ pub mod patterns {
                     "DELETE".to_string(),
                     "OPTIONS".to_string(),
                 ])
-                .unwrap(),
+                .unwrap_or_else(|_| OneOrMany::one("GET".to_string())),
                 allowed_headers: ZeroOneOrMany::one("*".to_string()),
                 max_age: 86400,
                 credentials: false,

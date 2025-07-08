@@ -37,6 +37,59 @@ test-gix:
 test-all:
     cargo nextest run --features full
 
+# Comprehensive feature testing - test every feature in isolation and combination
+test-features:
+    @echo "🧪 Testing all feature combinations..."
+    @echo "📦 Installing nextest if needed..."
+    @cargo install cargo-nextest --locked 2>/dev/null || true
+    @echo "🔧 Testing minimal (no features)..."
+    cargo nextest run --no-default-features
+    @echo "🔧 Testing std only..."
+    cargo nextest run --no-default-features --features std
+    @echo "🔧 Testing collections only..."
+    cargo nextest run --no-default-features --features collections
+    @echo "🔧 Testing async only..."
+    cargo nextest run --no-default-features --features async
+    @echo "🔧 Testing macros only..."
+    cargo nextest run --no-default-features --features macros
+    @echo "🔧 Testing tokio-async backend..."
+    cargo nextest run --no-default-features --features tokio-async
+    @echo "🔧 Testing std-async backend..."
+    cargo nextest run --no-default-features --features std-async
+    @echo "🔧 Testing crossbeam-async backend..."
+    cargo nextest run --no-default-features --features crossbeam-async
+    @echo "🔧 Testing serde support..."
+    cargo nextest run --no-default-features --features collections,serde
+    @echo "🔧 Testing hashbrown-json..."
+    cargo nextest run --no-default-features --features hashbrown-json
+    @echo "🔧 Testing gix-interop..."
+    cargo nextest run --no-default-features --features gix-interop
+    @echo "🔧 Testing async+collections..."
+    cargo nextest run --no-default-features --features async,collections
+    @echo "🔧 Testing macros+collections..."
+    cargo nextest run --no-default-features --features macros,collections
+    @echo "🔧 Testing all async backends..."
+    cargo nextest run --no-default-features --features tokio-async,std-async,crossbeam-async
+    @echo "🔧 Testing full feature set..."
+    cargo nextest run --features full
+    @echo "🎉 All feature combinations tested successfully!"
+
+# Test specific feature combinations
+test-minimal:
+    cargo nextest run --no-default-features
+
+test-std:
+    cargo nextest run --no-default-features --features std
+
+test-collections-serde:
+    cargo nextest run --no-default-features --features collections,serde
+
+test-async-backends:
+    cargo nextest run --no-default-features --features tokio-async,std-async,crossbeam-async
+
+test-integration:
+    cargo nextest run --no-default-features --features async,collections,macros
+
 # Run examples with required features
 examples: example-collections example-async example-ai-agent example-api-config example-showcase
 

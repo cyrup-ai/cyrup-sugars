@@ -12,4 +12,11 @@ pub mod json_ext;
 
 // Re-export extension traits
 #[cfg(feature = "hashbrown-json")]
-pub use json_ext::{CollectionJsonExt, JsonObjectExt, TryCollectionJsonExt};
+pub use json_ext::{
+    JsonObjectExtStringString, JsonObjectExtStringV, 
+    JsonObjectExtKString, JsonObjectExtKV,
+    CollectionJsonExtStringString, CollectionJsonExtStringV, 
+    CollectionJsonExtKString, CollectionJsonExtKV,
+    TryCollectionJsonExtStringString, TryCollectionJsonExtStringV, 
+    TryCollectionJsonExtKString, TryCollectionJsonExtKV
+};

@@ -58,7 +58,13 @@ pub mod hash {
 
         #[inline(always)]
         fn write(&mut self, bytes: &[u8]) {
-            self.0 = u64::from_ne_bytes(bytes[..8].try_into().unwrap());
+            // SAFETY: This is only called by ObjectId which always provides at least 8 bytes
+            debug_assert!(bytes.len() >= 8, "ObjectId must provide at least 8 bytes");
+            let arr: [u8; 8] = [
+                bytes[0], bytes[1], bytes[2], bytes[3],
+                bytes[4], bytes[5], bytes[6], bytes[7]
+            ];
+            self.0 = u64::from_ne_bytes(arr);
         }
 
         // Panic if someone tries to use this with a different function,

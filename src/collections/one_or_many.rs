@@ -37,7 +37,7 @@ use std::marker::PhantomData;
 /// ### Examples
 /// ```rust
 /// let single = OneOrMany::one(42);
-/// let multiple = OneOrMany::many(vec![1, 2, 3]).unwrap();
+/// let multiple = OneOrMany::many(vec![1, 2, 3])?;
 /// let pushed = single.with_pushed(43);
 /// ```
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -87,7 +87,7 @@ impl<T> OneOrMany<T> {
     ///     "key1" => "value1",
     ///     "key2" => "value2",
     /// };
-    /// let collection: OneOrMany<(&str, &str)> = OneOrMany::from_hashmap(map).unwrap();
+    /// let collection: OneOrMany<(&str, &str)> = OneOrMany::from_hashmap(map)?;
     /// # }
     /// ```
     #[cfg(feature = "hashbrown-json")]
@@ -116,7 +116,7 @@ impl<T> OneOrMany<T> {
     /// let collection: OneOrMany<(&str, &str)> = OneOrMany::from_json(hash_map_fn! {
     ///     "beta" => "true",
     ///     "version" => "2.1.0",
-    /// }).unwrap();
+    /// })?;
     /// # }
     /// ```
     #[cfg(feature = "hashbrown-json")]
@@ -158,7 +158,12 @@ impl<T> OneOrMany<T> {
     /// Returns a reference to the first element.
     #[inline]
     pub fn first(&self) -> &T {
-        self.0.first().expect("OneOrMany always has at least one element")
+        // SAFETY: OneOrMany guarantees at least one element by construction
+        match &self.0 {
+            ZeroOneOrMany::None => unreachable!("OneOrMany cannot be None"),
+            ZeroOneOrMany::One(item) => item,
+            ZeroOneOrMany::Many(v) => &v[0],
+        }
     }
 
     /// Returns a vector of references to all elements after the first.
@@ -317,7 +322,20 @@ impl<T> From<OneOrMany<T>> for Vec<T> {
 impl<T> FromIterator<T> for OneOrMany<T> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        let vec: Vec<T> = iter.into_iter().collect();
-        OneOrMany::many(vec).expect("OneOrMany cannot be constructed from empty iterator")
+        let mut iter = iter.into_iter();
+        match iter.next() {
+            None => panic!("OneOrMany requires at least one element"),
+            Some(first) => {
+                let rest: Vec<T> = iter.collect();
+                if rest.is_empty() {
+                    OneOrMany::one(first)
+                } else {
+                    let mut vec = Vec::with_capacity(1 + rest.len());
+                    vec.push(first);
+                    vec.extend(rest);
+                    OneOrMany(ZeroOneOrMany::Many(vec))
+                }
+            }
+        }
     }
 }

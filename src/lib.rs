@@ -39,12 +39,12 @@
 //!     "servers" => ZeroOneOrMany::many(vec!["api.com", "db.com"]),
 //!     "endpoints" => OneOrMany::one("primary.api.com")
 //! };
-//! let json = serde_json::to_string_pretty(&config).unwrap();
+//! let json = serde_json::to_string_pretty(&config)?;
 //!
 //! // Flexible deserialization - handles null, single values, or arrays
-//! let from_null: ZeroOneOrMany<String> = serde_json::from_str("null").unwrap();
-//! let from_single: ZeroOneOrMany<String> = serde_json::from_str(r#""hello""#).unwrap();
-//! let from_array: ZeroOneOrMany<String> = serde_json::from_str(r#"["hello", "world"]"#).unwrap();
+//! let from_null: ZeroOneOrMany<String> = serde_json::from_str("null")?;
+//! let from_single: ZeroOneOrMany<String> = serde_json::from_str(r#""hello""#)?;
+//! let from_array: ZeroOneOrMany<String> = serde_json::from_str(r#"["hello", "world"]"#)?;
 //! ```
 
 #![feature(auto_traits, negative_impls)]
@@ -78,7 +78,14 @@ pub use collections::{
 
 // Re-export JSON extension traits when both features are enabled
 #[cfg(all(feature = "collections", feature = "hashbrown-json"))]
-pub use collections::{CollectionJsonExt, JsonObjectExt, TryCollectionJsonExt};
+pub use collections::{
+    JsonObjectExtStringString, JsonObjectExtStringV, 
+    JsonObjectExtKString, JsonObjectExtKV,
+    CollectionJsonExtStringString, CollectionJsonExtStringV, 
+    CollectionJsonExtKString, CollectionJsonExtKV,
+    TryCollectionJsonExtStringString, TryCollectionJsonExtStringV, 
+    TryCollectionJsonExtKString, TryCollectionJsonExtKV
+};
 
 // Re-export async utilities
 #[cfg(feature = "async")]
