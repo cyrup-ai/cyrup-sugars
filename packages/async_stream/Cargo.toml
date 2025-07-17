@@ -2,6 +2,12 @@
 name = "sugars_async_stream"
 version = "0.1.0"
 edition = "2021"
+authors = ["CYRUP Contributors"]
+description = "Async stream utilities with multiple backend support"
+repository = "https://github.com/cyrup-ai/sugars"
+license = "MIT OR Apache-2.0"
+keywords = ["async", "stream", "futures", "sugar"]
+categories = ["asynchronous", "concurrency"]
 
 [lib]
 path = "src/lib.rs"

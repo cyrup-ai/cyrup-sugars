@@ -2,6 +2,12 @@
 name = "sugars_builders"
 version = "0.1.0"
 edition = "2021"
+authors = ["CYRUP Contributors"]
+description = "Builder pattern utilities and helpers for cyrup_sugars"
+repository = "https://github.com/cyrup-ai/sugars"
+license = "MIT OR Apache-2.0"
+keywords = ["builder", "pattern", "utilities", "sugar"]
+categories = ["development-tools", "rust-patterns"]
 
 [lib]
 path = "src/lib.rs"

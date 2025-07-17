@@ -2,6 +2,12 @@
 name = "sugars_gix"
 version = "0.1.0"
 edition = "2021"
+authors = ["CYRUP Contributors"]
+description = "Git object hash table interoperability for cyrup_sugars"
+repository = "https://github.com/cyrup-ai/sugars"
+license = "MIT OR Apache-2.0"
+keywords = ["git", "gix", "hash", "interop", "sugar"]
+categories = ["development-tools", "data-structures"]
 
 [lib]
 path = "src/lib.rs"

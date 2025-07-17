@@ -1,187 +1,231 @@
-# TODO - JSON Syntax Transformation Implementation
+# TODO - Code Quality Assessment and Refactoring
 
-## Milestone: Complete JSON Syntax Attribute Macro Implementation
+## Code Quality Assessment Results
 
-### Core Implementation Tasks
+### Non-Production Indicators Search Results
 
-1. **Rewrite json_syntax attribute macro with zero-allocation iterator-based transformation** - `/Volumes/samsung_t9/sugars/packages/macros/src/lib.rs:121-190`
-   - Replace entire `json_syntax` attribute macro implementation 
-   - Use streaming iterator processing with `Iterator::scan` and `Iterator::flat_map`
-   - Implement single-pass token transformation without Vec allocations
-   - Transform `{"key" => "value"}` to `sugars_collections::hash_map!{"key" => "value"}` calls
-   - Preserve token spans for IDE support and error reporting
-   - Handle nested braces, comments, and complex Rust syntax contexts
-   - Add comprehensive error handling with meaningful error messages for malformed JSON syntax
-   - Ensure blazing-fast performance with minimal branching in hot paths
-   - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+**Search Terms**: "in a real", "in production", "for now", "todo", "actual", "hack", "fix", "unwrap(", "expect(" in src/ directories
 
-2. **Act as an Objective QA Rust developer** - Review the json_syntax attribute macro implementation
-   - Verify zero-allocation behavior using iterator chains instead of Vec collections
-   - Confirm blazing-fast performance with single-pass processing
-   - Validate no unsafe or unchecked operations are used
-   - Ensure no locking mechanisms are present (stateless transformation)
-   - Check elegant ergonomic code with clean separation of concerns
-   - Test pattern detection accuracy for `{"key" => "value"}` syntax variants
-   - Verify proper error handling for malformed JSON syntax
-   - Confirm token span preservation for IDE integration
-   - Validate comprehensive edge case handling (nested braces, comments, complex contexts)
+**Results**: 
+- ✅ **CLEAN**: No non-production indicators found in source code
+- ✅ **CLEAN**: No TODO comments in source code
+- ✅ **CLEAN**: No panic!, unimplemented!, or unwrap() patterns found
+- ✅ **CLEAN**: No "hack" or "fix" patterns in source code
+- ✅ **CLEAN**: No "for now" or "actual" temporary patterns found
 
-3. **Implement efficient pattern detection function** - `/Volumes/samsung_t9/sugars/packages/macros/src/lib.rs:191-250`
-   - Create `detect_json_pattern` function using iterator-based pattern matching
-   - Implement zero-allocation token stream scanning with stateful processing
-   - Handle all JSON syntax variants: single pairs, multiple pairs, trailing commas
-   - Add robust context awareness for nested braces and Rust syntax
-   - Implement efficient string literal detection and validation
-   - Add proper error recovery for incomplete or malformed patterns
-   - Ensure minimal computational overhead with optimized branching logic
-   - Support IDE tooling with accurate token span tracking
-   - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+**One False Positive**: 
+- `hack` found in `/Volumes/samsung_t9/sugars/examples/json_syntax/TODO.md:109` - This is just documentation text, not code
 
-4. **Act as an Objective QA Rust developer** - Review the pattern detection implementation
-   - Verify iterator-based approach with zero allocations
-   - Test pattern matching accuracy across all JSON syntax variants
-   - Validate robust handling of nested braces and complex contexts
-   - Confirm efficient string literal detection and validation
-   - Check proper error recovery for malformed patterns
-   - Ensure minimal computational overhead and optimized performance
-   - Verify IDE tooling support with accurate token span tracking
-   - Test edge cases: empty objects, single quotes, escaped characters
+**Revision needed**: Update TODO.md language to be more precise about "no temporary workarounds" instead of using "hack" terminology.
 
-5. **Implement transformation replacement function** - `/Volumes/samsung_t9/sugars/packages/macros/src/lib.rs:251-310`
-   - Create `create_hash_map_replacement` function with iterator-based token generation
-   - Generate fully qualified `sugars_collections::hash_map!` macro calls
-   - Implement zero-allocation token stream construction using iterator chains
-   - Preserve original token spans for accurate error reporting and IDE support
-   - Handle all key-value pair combinations with proper comma handling
-   - Add comprehensive validation for generated token streams
-   - Ensure generated code follows Rust formatting conventions
-   - Implement efficient token stream merging with minimal overhead
-   - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+## Large File Decomposition Tasks
 
-6. **Act as an Objective QA Rust developer** - Review the transformation replacement implementation
-   - Verify zero-allocation token stream construction using iterator chains
-   - Confirm fully qualified macro calls are generated correctly
-   - Validate token span preservation for error reporting and IDE support
-   - Test all key-value pair combinations with proper comma handling
-   - Check comprehensive validation for generated token streams
-   - Ensure generated code follows Rust formatting conventions
-   - Verify efficient token stream merging with minimal overhead
-   - Test integration with existing hash_map! macro in collections crate
+### 1. **Decompose json_ext.rs (607 lines)** - `/Volumes/samsung_t9/sugars/packages/collections/src/json_ext.rs`
+**Problem**: Massive trait system with 4 main traits × 4 type combinations = 16 trait implementations, plus collection traits
+**Solution**: Split into logical submodules by concern:
+- **Create `json_ext/object_traits.rs`** - Core JsonObjectExt traits (lines 21-112)
+- **Create `json_ext/object_impls.rs`** - Trait implementations for Vec types (lines 113-229)
+- **Create `json_ext/collection_traits.rs`** - Collection extension traits (lines 230-273)
+- **Create `json_ext/collection_impls.rs`** - Collection trait implementations (lines 274-500)
+- **Create `json_ext/try_traits.rs`** - TryCollectionJsonExt traits and impls (lines 501-607)
+- **Update `json_ext/mod.rs`** - Re-export all traits with proper feature gating
+**Steps**:
+1. Create json_ext/ subdirectory
+2. Move trait definitions to separate files by logical concern
+3. Move implementations to corresponding impl files
+4. Create mod.rs with feature-gated re-exports
+5. Update parent module imports
+6. Verify all feature combinations compile correctly
 
-7. **Implement main transformation pipeline** - `/Volumes/samsung_t9/sugars/packages/macros/src/lib.rs:311-370`
-   - Create `transform_json_tokens_zero_alloc` main transformation function
-   - Implement streaming token processing with `Iterator::scan` for stateful transformation
-   - Use `Iterator::flat_map` for efficient token replacement without allocations
-   - Add comprehensive error handling with proper error message generation
-   - Implement context-aware processing for nested structures and Rust syntax
-   - Ensure proper integration with existing proc_macro infrastructure
-   - Add performance optimizations with inlined hot paths
-   - Implement robust error recovery and graceful degradation
-   - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+### 2. **Decompose document.rs (521 lines)** - `/Volumes/samsung_t9/sugars/packages/llm/src/domain/document.rs`
+**Problem**: Mixed concerns - document model, builder pattern, file I/O, and async operations
+**Solution**: Split into domain-specific modules:
+- **Create `document/model.rs`** - Document struct, ContentFormat, DocumentMediaType (lines 1-50)
+- **Create `document/builder.rs`** - DocumentBuilder and DocumentBuilderWithHandler (lines 51-150)
+- **Create `document/io.rs`** - File I/O operations and document loading (lines 151-350)
+- **Create `document/async_ops.rs`** - Async document processing operations (lines 351-521)
+- **Update `document/mod.rs`** - Re-export public API
+**Steps**:
+1. Create document/ subdirectory
+2. Extract core data structures to model.rs
+3. Move builder pattern to builder.rs
+4. Isolate file I/O operations to io.rs
+5. Move async operations to async_ops.rs
+6. Create mod.rs with clean public API
+7. Update imports in dependent modules
 
-8. **Act as an Objective QA Rust developer** - Review the main transformation pipeline
-   - Verify streaming token processing with Iterator::scan for stateful transformation
-   - Confirm Iterator::flat_map usage for efficient token replacement
-   - Validate comprehensive error handling with proper error messages
-   - Test context-aware processing for nested structures and Rust syntax
-   - Check proper integration with existing proc_macro infrastructure
-   - Verify performance optimizations with inlined hot paths
-   - Ensure robust error recovery and graceful degradation
-   - Test end-to-end transformation pipeline with complex examples
+### 3. **Decompose agent_role.rs (483 lines)** - `/Volumes/samsung_t9/sugars/packages/llm/src/domain/agent_role.rs`
+**Problem**: Multiple concerns - IntoHashMap trait, agent builder, conversation handling, and trait implementations
+**Solution**: Split by logical responsibility:
+- **Create `agent_role/hash_map_trait.rs`** - IntoHashMap trait and implementations (lines 10-44)
+- **Create `agent_role/builder.rs`** - AgentRoleBuilder and core building methods (lines 47-200)
+- **Create `agent_role/conversation.rs`** - AgentConversation and message handling (lines 85-115)
+- **Create `agent_role/mcp_server.rs`** - MCP server builder and configuration (lines 209-233)
+- **Create `agent_role/handlers.rs`** - Chunk handlers and agent management (lines 272-315)
+- **Create `agent_role/trait_impls.rs`** - ContextArgs, ToolArgs, and related trait implementations (lines 316-483)
+- **Update `agent_role/mod.rs`** - Clean re-exports
+**Steps**:
+1. Create agent_role/ subdirectory
+2. Extract IntoHashMap trait to separate file
+3. Move builder core to builder.rs
+4. Isolate conversation handling
+5. Extract MCP server logic
+6. Move handler implementations
+7. Separate trait implementations
+8. Create mod.rs with organized re-exports
 
-9. **Remove obsolete transformation functions** - `/Volumes/samsung_t9/sugars/packages/macros/src/lib.rs:127-190`
-   - Remove `transform_json_syntax_tokens` function (lines 127-157)
-   - Remove `contains_json_syntax` function (lines 159-169)
-   - Remove `transform_json_group` function (lines 171-190)
-   - Remove all related helper functions for the old token processing approach
-   - Clean up unused imports and dependencies
-   - Update documentation and comments for new implementation
-   - Ensure no breaking changes to public API surface
-   - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+### 4. **Decompose agent_builder.rs (441 lines)** - `/Volumes/samsung_t9/sugars/packages/llm/src/agent_builder.rs`
+**Problem**: Mixed concerns - IntoHashMap trait (duplicate), FluentAi builder, Context types, and agent construction
+**Solution**: Split by functional area:
+- **Create `agent_builder/hash_map_ext.rs`** - IntoHashMap trait implementations (lines 10-44)
+- **Create `agent_builder/fluent_ai.rs`** - FluentAi struct and core methods (lines 88-140)
+- **Create `agent_builder/context_types.rs`** - Context, File, Files, Directory, Github types (lines 105-125)
+- **Create `agent_builder/builder_impl.rs`** - AgentRoleBuilder implementation (lines 141-350)
+- **Create `agent_builder/tools.rs`** - Tool and NamedTool implementations (lines 126-140)
+- **Update `agent_builder/mod.rs`** - Organized re-exports
+**Steps**:
+1. Create agent_builder/ subdirectory
+2. Extract hash map extensions (eliminate duplication with agent_role)
+3. Move FluentAi to separate file
+4. Extract context types to dedicated module
+5. Move builder implementation
+6. Isolate tool implementations
+7. Create mod.rs with clean API surface
 
-10. **Act as an Objective QA Rust developer** - Review the cleanup of obsolete functions
-    - Verify all obsolete transformation functions are completely removed
-    - Confirm no unused imports or dependencies remain
-    - Check documentation and comments are updated for new implementation
-    - Ensure no breaking changes to public API surface
-    - Test that compilation succeeds after cleanup
-    - Verify no dead code warnings or lint issues
-    - Confirm code organization and structure is clean and maintainable
+### 5. **Decompose zero_one_or_many.rs (414 lines)** - `/Volumes/samsung_t9/sugars/packages/collections/src/zero_one_or_many.rs`
+**Problem**: Large enum with extensive trait implementations cluttering single file
+**Solution**: Split by trait category:
+- **Create `zero_one_or_many/core.rs`** - ZeroOneOrMany enum and core methods (lines 50-284)
+- **Create `zero_one_or_many/iterator.rs`** - IntoIterator implementations (lines 285-308)
+- **Create `zero_one_or_many/serde.rs`** - Serialize/Deserialize implementations (lines 309-383)
+- **Create `zero_one_or_many/conversions.rs`** - From/Into trait implementations (lines 384-414)
+- **Update `zero_one_or_many/mod.rs`** - Re-export with feature gating
+**Steps**:
+1. Create zero_one_or_many/ subdirectory
+2. Keep core enum and methods in core.rs
+3. Move iterator implementations to dedicated file
+4. Extract serde support to separate module
+5. Move conversion traits to conversions.rs
+6. Create mod.rs with proper feature gates
 
-### Integration and Testing Tasks
+### 6. **Decompose agent.rs (399 lines)** - `/Volumes/samsung_t9/sugars/packages/llm/src/domain/agent.rs`
+**Problem**: Agent domain model with mixed concerns and responsibilities
+**Solution**: Split by domain area:
+- **Create `agent/model.rs`** - Agent struct and core data model (lines 1-100)
+- **Create `agent/builder.rs`** - Agent builder pattern and construction (lines 101-200)
+- **Create `agent/operations.rs`** - Agent operations and methods (lines 201-300)
+- **Create `agent/async_ops.rs`** - Async agent operations (lines 301-399)
+- **Update `agent/mod.rs`** - Clean public API
+**Steps**:
+1. Create agent/ subdirectory
+2. Extract core Agent data model
+3. Move builder pattern to separate file
+4. Isolate synchronous operations
+5. Extract async operations
+6. Create mod.rs with organized exports
 
-11. **Verify example compilation and functionality** - `/Volumes/samsung_t9/sugars/examples/json_syntax/src/main.rs`
-    - Test compilation of example without any modifications to example code
-    - Verify `.additional_params({"beta" => "true"})` transformation works correctly
-    - Test `.metadata({"key" => "val", "foo" => "bar"})` transformation works correctly
-    - Confirm `Tool::<Perplexity>::new({"citations" => "true"})` transformation works correctly
-    - Validate all JSON syntax variants compile and execute properly
-    - Ensure no user-visible macros are exposed in the example
-    - Test runtime behavior matches expected functionality
-    - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+### 7. **Decompose builders/lib.rs (358 lines)** - `/Volumes/samsung_t9/sugars/packages/builders/src/lib.rs`
+**Problem**: Multiple builder types and utilities mixed in single file
+**Solution**: Split by builder type:
+- **Create `builders/core.rs`** - Core builder traits and utilities (lines 1-100)
+- **Create `builders/agent.rs`** - Agent-specific builders (lines 101-200)
+- **Create `builders/collection.rs`** - Collection builders (lines 201-300)
+- **Create `builders/utilities.rs`** - Helper utilities and extensions (lines 301-358)
+- **Update `builders/mod.rs`** - Re-export organized API
+**Steps**:
+1. Analyze current lib.rs structure
+2. Extract core builder traits
+3. Move agent builders to separate file
+4. Isolate collection builders
+5. Extract utilities to dedicated module
+6. Create mod.rs with clean exports
 
-12. **Act as an Objective QA Rust developer** - Review example compilation and functionality
-    - Confirm example compiles without any modifications
-    - Verify all JSON syntax transformations work correctly
-    - Test all syntax variants compile and execute properly
-    - Ensure no user-visible macros are exposed
-    - Validate runtime behavior matches expected functionality
-    - Check error messages are helpful for debugging
-    - Test IDE integration and code completion work properly
+### 8. **Decompose one_or_many.rs (342 lines)** - `/Volumes/samsung_t9/sugars/packages/collections/src/one_or_many.rs`
+**Problem**: Large collection type with many trait implementations
+**Solution**: Split by trait category:
+- **Create `one_or_many/core.rs`** - OneOrMany enum and core methods (lines 1-150)
+- **Create `one_or_many/iterator.rs`** - Iterator implementations (lines 151-200)
+- **Create `one_or_many/serde.rs`** - Serialization support (lines 201-250)
+- **Create `one_or_many/conversions.rs`** - From/Into implementations (lines 251-342)
+- **Update `one_or_many/mod.rs`** - Feature-gated re-exports
+**Steps**:
+1. Create one_or_many/ subdirectory
+2. Keep core enum and methods in core.rs
+3. Move iterator implementations
+4. Extract serde support
+5. Move conversion traits
+6. Create mod.rs with proper feature gates
 
-13. **Performance validation and optimization** - `/Volumes/samsung_t9/sugars/packages/macros/src/lib.rs` (entire file)
-    - Implement performance benchmarks for transformation pipeline
-    - Verify zero-allocation behavior using memory profiling tools
-    - Confirm blazing-fast performance with minimal processing overhead
-    - Test transformation speed with large and complex JSON syntax examples
-    - Validate no unnecessary cloning or temporary allocations
-    - Ensure optimal iterator chain usage throughout implementation
-    - Add performance regression tests for future maintenance
-    - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+### 9. **Decompose memory_workflow.rs (334 lines)** - `/Volumes/samsung_t9/sugars/packages/llm/src/domain/memory_workflow.rs`
+**Problem**: Memory workflow functionality with multiple concerns
+**Solution**: Split by workflow stage:
+- **Create `memory_workflow/core.rs`** - Core workflow types and structs (lines 1-100)
+- **Create `memory_workflow/operations.rs`** - Memory operations and processing (lines 101-200)
+- **Create `memory_workflow/async_ops.rs`** - Async workflow operations (lines 201-334)
+- **Update `memory_workflow/mod.rs`** - Organized re-exports
+**Steps**:
+1. Create memory_workflow/ subdirectory
+2. Extract core workflow types
+3. Move synchronous operations
+4. Extract async operations
+5. Create mod.rs with clean API
 
-14. **Act as an Objective QA Rust developer** - Review performance validation and optimization
-    - Verify zero-allocation behavior using memory profiling tools
-    - Confirm blazing-fast performance with minimal processing overhead
-    - Test transformation speed with large and complex examples
-    - Validate no unnecessary cloning or temporary allocations
-    - Ensure optimal iterator chain usage throughout implementation
-    - Check performance regression tests are comprehensive
-    - Verify performance meets all specified constraints
+### 10. **Decompose mcp.rs (325 lines)** - `/Volumes/samsung_t9/sugars/packages/llm/src/domain/mcp.rs`
+**Problem**: MCP protocol implementation with multiple protocol concerns
+**Solution**: Split by protocol layer:
+- **Create `mcp/protocol.rs`** - Core MCP protocol types (lines 1-100)
+- **Create `mcp/client.rs`** - MCP client implementation (lines 101-200)
+- **Create `mcp/server.rs`** - MCP server implementation (lines 201-325)
+- **Update `mcp/mod.rs`** - Protocol re-exports
+**Steps**:
+1. Create mcp/ subdirectory
+2. Extract core protocol types
+3. Move client implementation
+4. Extract server implementation
+5. Create mod.rs with protocol exports
 
-15. **Comprehensive error handling implementation** - `/Volumes/samsung_t9/sugars/packages/macros/src/lib.rs:371-430`
-    - Implement detailed error messages for malformed JSON syntax
-    - Add proper error recovery for incomplete patterns
-    - Create helpful diagnostic information with token span locations
-    - Implement graceful degradation for unsupported syntax
-    - Add validation for edge cases and corner cases
-    - Ensure error messages provide actionable guidance to users
-    - Implement comprehensive error testing and validation
-    - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+### 11. **Decompose byte_size.rs (304 lines)** - `/Volumes/samsung_t9/sugars/packages/collections/src/byte_size.rs`
+**Problem**: Byte size utilities with multiple format concerns
+**Solution**: Split by functionality:
+- **Create `byte_size/core.rs`** - ByteSize struct and core methods (lines 1-150)
+- **Create `byte_size/formatting.rs`** - Display and formatting implementations (lines 151-220)
+- **Create `byte_size/conversions.rs`** - From/Into trait implementations (lines 221-304)
+- **Update `byte_size/mod.rs`** - Clean re-exports
+**Steps**:
+1. Create byte_size/ subdirectory
+2. Keep core ByteSize in core.rs
+3. Move formatting logic
+4. Extract conversion traits
+5. Create mod.rs with organized exports
 
-16. **Act as an Objective QA Rust developer** - Review comprehensive error handling implementation
-    - Verify detailed error messages for malformed JSON syntax
-    - Test proper error recovery for incomplete patterns
-    - Confirm helpful diagnostic information with token span locations
-    - Validate graceful degradation for unsupported syntax
-    - Check validation for edge cases and corner cases
-    - Ensure error messages provide actionable guidance
-    - Test comprehensive error scenarios and edge cases
+## General Refactoring Guidelines
 
-17. **Final integration testing and validation** - `/Volumes/samsung_t9/sugars/examples/json_syntax/src/main.rs` + `/Volumes/samsung_t9/sugars/packages/macros/src/lib.rs`
-    - Run comprehensive end-to-end testing with the example
-    - Verify all builder methods work correctly with JSON syntax
-    - Test complex nested JSON patterns and edge cases
-    - Validate IDE integration and code completion functionality
-    - Ensure no regressions in existing functionality
-    - Test with various Rust compiler versions and configurations
-    - Validate production-ready quality and robustness
-    - DO NOT MOCK, FABRICATE, FAKE or SIMULATE ANY OPERATION or DATA. Make ONLY THE MINIMAL, SURGICAL CHANGES required. Do not modify or rewrite any portion of the app outside scope.
+For each decomposition task:
+1. **Preserve public API**: Ensure no breaking changes to public interfaces
+2. **Maintain feature gates**: Keep all feature flags working correctly
+3. **Update documentation**: Move docs to appropriate modules
+4. **Test thoroughly**: Verify all functionality works after decomposition
+5. **Clean imports**: Remove unused imports and add necessary ones
+6. **Follow naming conventions**: Use consistent module naming patterns
+7. **Optimize re-exports**: Create clean, logical re-export structures
 
-18. **Act as an Objective QA Rust developer** - Review final integration testing and validation
-    - Verify comprehensive end-to-end testing passes
-    - Confirm all builder methods work correctly with JSON syntax
-    - Test complex nested JSON patterns and edge cases
-    - Validate IDE integration and code completion functionality
-    - Ensure no regressions in existing functionality
-    - Check compatibility with various Rust compiler versions
-    - Confirm production-ready quality and robustness
+## Priority Order
+
+**High Priority** (>500 lines):
+1. json_ext.rs (607 lines) - Most complex trait system
+2. document.rs (521 lines) - Mixed domain concerns
+
+**Medium Priority** (400-500 lines):
+3. agent_role.rs (483 lines) - Core agent functionality
+4. agent_builder.rs (441 lines) - Builder pattern duplication
+5. zero_one_or_many.rs (414 lines) - Collection type with many traits
+6. agent.rs (399 lines) - Agent domain model
+
+**Lower Priority** (300-400 lines):
+7. lib.rs (358 lines) - Builder library organization
+8. one_or_many.rs (342 lines) - Collection type organization
+9. memory_workflow.rs (334 lines) - Workflow organization
+10. mcp.rs (325 lines) - Protocol organization
+11. byte_size.rs (304 lines) - Utility organization
+
+**Total**: 11 files requiring decomposition for better maintainability and code organization.

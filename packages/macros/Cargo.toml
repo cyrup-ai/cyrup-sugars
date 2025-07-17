@@ -2,6 +2,12 @@
 name = "sugars_macros"
 version = "0.1.0"
 edition = "2021"
+authors = ["CYRUP Contributors"]
+description = "Procedural macros for cyrup_sugars JSON syntax and collections"
+repository = "https://github.com/cyrup-ai/sugars"
+license = "MIT OR Apache-2.0"
+keywords = ["macros", "proc-macro", "json", "sugar"]
+categories = ["development-tools"]
 
 [lib]
 path = "src/lib.rs"

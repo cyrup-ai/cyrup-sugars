@@ -2,6 +2,12 @@
 name = "sugars_collections"
 version = "0.1.0"
 edition = "2021"
+authors = ["CYRUP Contributors"]
+description = "Memory-efficient collection types: ZeroOneOrMany, OneOrMany, ByteSize"
+repository = "https://github.com/cyrup-ai/sugars"
+license = "MIT OR Apache-2.0"
+keywords = ["collections", "memory", "zero-allocation", "sugar"]
+categories = ["data-structures", "rust-patterns"]
 
 [lib]
 path = "src/lib.rs"
