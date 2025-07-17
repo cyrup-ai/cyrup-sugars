@@ -16,7 +16,7 @@ path = "src/lib.rs"
 sugars_collections = { path = "../collections", version = "0.1.0" }
 sugars_async_task = { path = "../async_task", version = "0.1.0" }
 sugars_macros = { path = "../macros", version = "0.1.0" }
-hashbrown = "0.15.4"
+hashbrown = { version = "0.15.4", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = { version = "1.0.140" }
 workspace-hack = { version = "0.1", path = "../../workspace-hack" }
