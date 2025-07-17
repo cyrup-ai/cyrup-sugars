@@ -1,0 +1,9 @@
+[package]
+name = "async_task_example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.0", features = ["full"] }
+sugars_async_task = { path = "../../packages/async_task" }
+sugars_collections = { path = "../../packages/collections" }

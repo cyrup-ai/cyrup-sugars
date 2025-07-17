@@ -1,0 +1,34 @@
+# Hakari configuration for cyrup-sugars workspace
+
+hakari-package = "workspace-hack"
+resolver = "2"
+dep-format-version = "4"
+
+# Platform optimization - include common development and CI platforms
+platforms = [
+    "x86_64-unknown-linux-gnu",
+    "x86_64-apple-darwin", 
+    "x86_64-pc-windows-msvc",
+    "aarch64-apple-darwin",
+]
+
+# Unify features across target and host platforms
+unify-target-host = "auto"
+
+# Output single feature list for better readability
+output-single-feature = false
+
+# Exclusions for test-only dependencies
+[traversal-excludes]
+workspace-members = []
+third-party = [
+    { name = "criterion" },
+    { name = "proptest" },
+]
+
+[final-excludes]
+workspace-members = []
+third-party = [
+    { name = "pretty_assertions" },
+    { name = "tokio-test" },
+]

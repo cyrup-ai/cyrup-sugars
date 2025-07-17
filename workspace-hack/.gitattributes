@@ -1,0 +1,2 @@
+# Minimize merge conflicts for workspace-hack
+Cargo.toml merge=binary

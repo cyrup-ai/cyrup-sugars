@@ -1,0 +1,68 @@
+[package]
+name = "sugars_llm"
+version = "0.1.0"
+edition = "2021"
+description = "LLM builders and domain objects for cyrup_sugars"
+license = "MIT OR Apache-2.0"
+authors = ["Cyrup AI <info@cyrup.ai>"]
+repository = "https://github.com/cyrup-ai/sugars"
+documentation = "https://docs.rs/sugars_llm"
+keywords = ["llm", "ai", "builder", "async"]
+categories = ["development-tools", "asynchronous"]
+
+[dependencies]
+# Core async primitives from workspace
+cyrup_sugars = { path = "../cyrup-sugars", features = ["tokio-async", "hashbrown-json"] }
+
+# Macros for JSON object syntax
+sugars_macros = { path = "../macros" }
+
+# Collections for JSON syntax support
+sugars_collections = { path = "../collections" }
+
+# Async runtime and utilities
+tokio = { version = "1.0", features = ["full"] }
+futures = "0.3"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Collections and data structures
+hashbrown = "0.15.4"
+
+# HTTP client for API calls
+reqwest = { version = "0.11", features = ["json", "stream"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Logging
+log = "0.4"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID generation
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# For file handling in context
+walkdir = "2.3"
+
+# For embeddings and vector operations
+ndarray = "0.15"
+
+# For file globbing patterns
+glob = "0.3"
+
+[features]
+default = ["tokio-async", "hashbrown-json"]
+tokio-async = ["cyrup_sugars/tokio-async"]
+std-async = ["cyrup_sugars/std-async"]
+crossbeam-async = ["cyrup_sugars/crossbeam-async"]
+hashbrown-json = ["cyrup_sugars/hashbrown-json"]
+full = ["tokio-async", "hashbrown-json"]
+
+[dev-dependencies]
+tokio-test = "0.4"

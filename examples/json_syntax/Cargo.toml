@@ -1,0 +1,26 @@
+[package]
+name = "sugars-examples"
+version = "0.1.0"
+edition = "2021"
+description = "Example implementations demonstrating cyrup_sugars JSON object syntax"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Core sugars functionality
+sugars_collections = { path = "../../packages/collections" }
+sugars_builders = { path = "../../packages/builders" }
+sugars_llm = { path = "../../packages/llm" }
+cyrup_sugars = { path = "../../packages/cyrup-sugars", features = ["tokio-async", "hashbrown-json"] }
+sugars_macros = { path = "../../packages/macros" }
+
+# Required for JSON object syntax
+hashbrown = { version = "0.15.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Async runtime for examples
+tokio = { version = "1.0", features = ["full", "macros"] }
+
+[features]
+default = ["hashbrown-json"]
+hashbrown-json = ["sugars_collections/hashbrown-json", "sugars_builders/hashbrown-json"]

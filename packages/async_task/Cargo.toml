@@ -1,0 +1,18 @@
+[package]
+name = "sugars_async_task"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+tokio = { version = "1.46.1", features = ["rt", "sync"], optional = true }
+futures = "0.3.31"
+parking_lot = { version = "0.12.4", optional = true }
+sugars_collections = { path = "../collections" }
+workspace-hack = { version = "0.1", path = "../../workspace-hack" }
+
+[features]
+default = ["tokio"]
+tokio = ["dep:tokio", "parking_lot"]

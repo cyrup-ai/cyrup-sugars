@@ -1,0 +1,21 @@
+[package]
+name = "sugars_collections"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+name = "sugars_collections"
+
+[dependencies]
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = { version = "1.0.140" }
+hashbrown = { version = "0.15.4" }
+workspace-hack = { version = "0.1", path = "../../workspace-hack" }
+
+[features]
+default = []
+hashbrown-json = []
+
+[dev-dependencies]
+pretty_assertions = "1.4.1"

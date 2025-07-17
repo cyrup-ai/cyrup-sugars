@@ -1,0 +1,20 @@
+[package]
+name = "sugars_builders"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+sugars_collections = { path = "../collections" }
+sugars_async_task = { path = "../async_task" }
+sugars_macros = { path = "../macros" }
+hashbrown = "0.15.4"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = { version = "1.0.140" }
+workspace-hack = { version = "0.1", path = "../../workspace-hack" }
+
+[features]
+default = []
+hashbrown-json = ["sugars_collections/hashbrown-json"]

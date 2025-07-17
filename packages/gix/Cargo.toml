@@ -1,0 +1,13 @@
+[package]
+name = "sugars_gix"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+gix-hash = "0.18.0"
+parking_lot = "0.12.4"
+hashbrown = "0.15.4"
+workspace-hack = { version = "0.1", path = "../../workspace-hack" }

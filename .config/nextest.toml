@@ -1,0 +1,44 @@
+[profile.default]
+# Show output for passing tests
+success-output = "immediate"
+# Show output for failing tests  
+failure-output = "immediate"
+# Parallel execution
+test-threads = "num-cpus"
+
+[profile.ci]
+# CI-specific settings
+success-output = "never"
+failure-output = "immediate"
+test-threads = "num-cpus"
+
+# Feature-specific test profiles
+[profile.collections]
+filter = 'test(collections)'
+
+[profile.async-tokio]
+filter = 'test(async_tokio)'
+
+[profile.async-std]
+filter = 'test(async_std)'
+
+[profile.async-crossbeam]
+filter = 'test(async_crossbeam)'
+
+[profile.macros]
+filter = 'test(macros)'
+
+[profile.gix-interop]
+filter = 'test(gix_interop)'
+
+[profile.hashbrown-json]
+filter = 'test(hashbrown_json)'
+
+[profile.serde]
+filter = 'test(serde)'
+
+[profile.full]
+filter = 'test(full_features)'
+
+[profile.minimal]
+filter = 'test(minimal)'

@@ -1,0 +1,17 @@
+[workspace]
+members = [
+    "examples/async_task_example",
+    "examples/json_syntax",
+    "examples/one_or_many_example",
+    "examples/zero_one_or_many_example",
+    "packages/async_stream",
+    "packages/async_task",
+    "packages/builders",
+    "packages/collections",
+    "packages/cyrup-sugars",
+    "packages/gix",
+    "packages/llm",
+    "packages/macros",
+    "workspace-hack",
+]
+resolver = "2"

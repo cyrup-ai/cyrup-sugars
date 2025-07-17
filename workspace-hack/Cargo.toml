@@ -1,0 +1,28 @@
+[package]
+name = "workspace-hack"
+version = "0.1.0"
+edition = "2021"
+publish = false
+autobins = false
+autotests = false
+autobenches = false
+autoexamples = false
+
+[lib]
+name = "workspace_hack"
+path = "src/lib.rs"
+
+### BEGIN HAKARI SECTION
+[dependencies]
+futures-core = { version = "0.3" }
+hashbrown = { version = "0.15", features = ["serde"] }
+memchr = { version = "2" }
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["full", "test-util"] }
+
+[build-dependencies]
+proc-macro2 = { version = "1" }
+quote = { version = "1" }
+syn = { version = "2", features = ["full", "visit-mut"] }
+
+### END HAKARI SECTION
