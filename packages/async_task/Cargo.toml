@@ -2,7 +2,7 @@
 name = "sugars_async_task"
 version = "0.1.0"
 edition = "2021"
-authors = ["CYRUP Contributors"]
+authors = ["David Maple <david@cyrup.ai>"]
 description = "Concrete async task types that avoid boxed futures"
 repository = "https://github.com/cyrup-ai/sugars"
 license = "MIT OR Apache-2.0"
@@ -16,7 +16,7 @@ path = "src/lib.rs"
 tokio = { version = "1.46.1", features = ["rt", "sync"], optional = true }
 futures = "0.3.31"
 parking_lot = { version = "0.12.4", optional = true }
-sugars_collections = { path = "../collections" }
+sugars_collections = { path = "../collections", version = "0.1.0" }
 workspace-hack = { version = "0.1", path = "../../workspace-hack" }
 
 [features]

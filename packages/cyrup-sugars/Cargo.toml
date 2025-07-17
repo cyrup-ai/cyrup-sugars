@@ -2,7 +2,7 @@
 name = "cyrup_sugars"
 version = "0.1.0"
 edition = "2021"
-authors = ["CYRUP Contributors"]
+authors = ["David Maple <david@cyrup.ai>"]
 description = "Syntactic sugar utilities for Rust - collections, async patterns, and macros"
 repository = "https://github.com/cyrup/cyrup_sugars"
 license = "MIT OR Apache-2.0"
@@ -22,12 +22,12 @@ crossbeam-async = ["crossbeam", "futures", "async-channel", "sugars_async_stream
 hashbrown-json = ["sugars_collections/hashbrown-json"]
 
 [dependencies]
-sugars_collections = { path = "../collections" }
-sugars_async_task = { path = "../async_task" }
-sugars_async_stream = { path = "../async_stream" }
-sugars_macros = { path = "../macros" }
-sugars_gix = { path = "../gix" }
-sugars_builders = { path = "../builders" }
+sugars_collections = { path = "../collections", version = "0.1.0" }
+sugars_async_task = { path = "../async_task", version = "0.1.0" }
+sugars_async_stream = { path = "../async_stream", version = "0.1.0" }
+sugars_macros = { path = "../macros", version = "0.1.0" }
+sugars_gix = { path = "../gix", version = "0.1.0" }
+sugars_builders = { path = "../builders", version = "0.1.0" }
 serde = { version = "1.0.219", features = ["derive"], optional = true }
 serde_json = { version = "1.0.140", optional = true }
 hashbrown = { version = "0.15.4", features = ["serde"], optional = true }

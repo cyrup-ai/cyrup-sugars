@@ -2,7 +2,7 @@
 name = "sugars_collections"
 version = "0.1.0"
 edition = "2021"
-authors = ["CYRUP Contributors"]
+authors = ["David Maple <david@cyrup.ai>"]
 description = "Memory-efficient collection types: ZeroOneOrMany, OneOrMany, ByteSize"
 repository = "https://github.com/cyrup-ai/sugars"
 license = "MIT OR Apache-2.0"
