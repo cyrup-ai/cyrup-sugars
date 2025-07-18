@@ -1,6 +1,6 @@
 [package]
 name = "sugars_macros"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["David Maple <david@cyrup.ai>"]
 description = "Procedural macros for cyrup_sugars JSON syntax and collections"

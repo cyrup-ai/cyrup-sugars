@@ -67,6 +67,9 @@ pub mod r#async {
 
 pub use sugars_macros as macros;
 
+// Re-export closure macros from collections (since proc-macro crates can't export macro_rules!)
+pub use sugars_collections::{on_result, on_chunk, on_error, await_result, await_ok};
+
 pub use sugars_gix as external;
 
 pub use sugars_builders as builders;

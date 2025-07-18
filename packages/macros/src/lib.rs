@@ -74,3 +74,6 @@ pub fn hash_map_fn(input: TokenStream) -> TokenStream {
     }
     .into()
 }
+
+// Note: closures module removed since proc-macro crates 
+// cannot export macro_rules! macros alongside procedural macros

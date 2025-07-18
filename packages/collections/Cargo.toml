@@ -1,6 +1,6 @@
 [package]
 name = "sugars_collections"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["David Maple <david@cyrup.ai>"]
 description = "Memory-efficient collection types: ZeroOneOrMany, OneOrMany, ByteSize"
