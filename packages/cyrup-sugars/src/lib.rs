@@ -110,4 +110,7 @@ pub mod prelude {
 
     // Re-export async utilities
     pub use crate::r#async::{FutureExt, NotResult, StreamExt};
+    
+    // Re-export closure macros for async stream handling
+    pub use crate::{on_result, on_chunk, on_error, await_result, await_ok};
 }

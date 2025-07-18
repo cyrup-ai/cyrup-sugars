@@ -1,7 +1,7 @@
 [package]
 name = "cyrup_sugars"
-version = "0.1.2"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 authors = ["David Maple <david@cyrup.ai>"]
 description = "Syntactic sugar utilities for Rust - collections, async patterns, and macros"
 repository = "https://github.com/cyrup/cyrup_sugars"

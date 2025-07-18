@@ -1,7 +1,7 @@
 [package]
 name = "sugars_async_task"
-version = "0.1.2"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 authors = ["David Maple <david@cyrup.ai>"]
 description = "Concrete async task types that avoid boxed futures"
 repository = "https://github.com/cyrup-ai/sugars"

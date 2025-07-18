@@ -16,6 +16,20 @@ Syntactic sugar utilities for Rust - collections, async patterns, and macros.
 - `hashbrown-json` - JSON object syntax for collections
 - `gix-interop` - Git object hash tables
 
+## Quick Import with Prelude
+
+Get started quickly by importing everything you need:
+
+```rust
+use cyrup_sugars::prelude::*;
+
+// Now you have access to:
+// - Collection types: OneOrMany, ZeroOneOrMany, ByteSize
+// - Async utilities: AsyncTask, AsyncStream, AsyncResult
+// - Closure macros: on_result!, on_chunk!, on_error!, await_result!, await_ok!
+// - JSON syntax macros: hash_map! (with hashbrown-json feature)
+```
+
 ### JSON Object Syntax
 
 The `hashbrown-json` feature enables intuitive JSON-like syntax in builder patterns:
@@ -90,19 +104,21 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-cyrup_sugars = "0.1.2"
+cyrup_sugars = "0.1.3"
 ```
 
 Or with specific features:
 
 ```toml
 [dependencies]
-cyrup_sugars = { version = "0.1.2", features = ["hashbrown-json"] }
+cyrup_sugars = { version = "0.1.3", features = ["hashbrown-json"] }
 ```
 
 ## Example
 
 ```rust
+use cyrup_sugars::prelude::*;
+
 let stream = FluentAi::agent_role("rusty-squire")
     .completion_provider(Mistral::MagistralSmall)
     .temperature(1.0)
