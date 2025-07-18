@@ -40,114 +40,13 @@ pub use json_ext::{
 #[macro_export]
 macro_rules! hash_map {
     { $($key:expr => $value:expr),* $(,)? } => {
-        || {
+        ||
+        {
             let mut map = ::hashbrown::HashMap::new();
-            $(
-                map.insert($key, $value);
+            $(                map.insert($key, $value);
             )*
             map
         }
-    };
-}
-
-/// Transforms JSON-like syntax in builder chains to work with hash_map! macro
-///
-/// This macro makes `{"key" => "value"}` syntax work transparently as closures
-/// by automatically wrapping JSON objects with the appropriate hash_map! calls.
-///
-/// Usage:
-/// ```rust
-/// use sugars_collections::json_closure;
-///
-/// json_closure! {
-///     FluentAi::agent_role("example")
-///         .additional_params({"beta" => "true"})
-///         .metadata({"key" => "val", "foo" => "bar"})
-///         .tools((Tool::<Perplexity>::new({"citations" => "true"}),))
-/// }
-/// ```
-#[cfg(feature = "hashbrown-json")]
-#[macro_export]
-macro_rules! json_closure {
-    // Transform the entire expression tree
-    ( $($input:tt)* ) => {
-        json_closure_internal! { $($input)* }
-    };
-}
-
-/// Internal implementation for JSON closure transformation
-#[cfg(feature = "hashbrown-json")]
-#[macro_export]
-macro_rules! json_closure_internal {
-    // Base case: find and transform JSON patterns
-    ( $($tokens:tt)* ) => {
-        json_closure_replace! { $($tokens)* }
-    };
-}
-
-/// Recursively replaces JSON patterns with hash_map! calls
-/// Works at the token level to handle `{"key" => "value"}` syntax before Rust parsing
-#[cfg(feature = "hashbrown-json")]
-#[macro_export]
-macro_rules! json_closure_replace {
-    // Empty case
-    () => {};
-    
-    // Handle JSON object blocks first - highest priority
-    ( $($prefix:tt)* { $($inner:tt)+ } $($suffix:tt)* ) => {
-        json_closure_replace_inner! { 
-            prefix: [ $($prefix)* ]
-            block: { $($inner)+ }
-            suffix: [ $($suffix)* ]
-        }
-    };
-    
-    // No JSON blocks found - pass through unchanged
-    ( $($tokens:tt)* ) => {
-        $($tokens)*
-    };
-}
-
-/// Internal helper to process detected JSON blocks
-#[cfg(feature = "hashbrown-json")]
-#[macro_export]
-macro_rules! json_closure_replace_inner {
-    // Check if block contains arrow patterns
-    ( prefix: [ $($prefix:tt)* ] block: { $($inner:tt)+ } suffix: [ $($suffix:tt)* ] ) => {
-        json_closure_check_arrows! {
-            prefix: [ $($prefix)* ]
-            inner: [ $($inner)+ ]
-            suffix: [ $($suffix)* ]
-        }
-    };
-}
-
-/// Check for arrow patterns and transform if found
-#[cfg(feature = "hashbrown-json")]
-#[macro_export]
-macro_rules! json_closure_check_arrows {
-    // Any arrow pattern - transform to hash_map_fn! call
-    ( prefix: [ $($prefix:tt)* ] inner: [ $($inner:tt)+ ] suffix: [ $($suffix:tt)* ] ) => {
-        json_closure_arrow_check! {
-            prefix: [ $($prefix)* ]
-            inner: [ $($inner)+ ]
-            suffix: [ $($suffix)* ]
-        }
-    };
-}
-
-/// Check if inner tokens contain arrows and transform appropriately
-#[cfg(feature = "hashbrown-json")]
-#[macro_export]
-macro_rules! json_closure_arrow_check {
-    // Check for => pattern in tokens
-    ( prefix: [ $($prefix:tt)* ] inner: [ $($pre:tt)* => $($post:tt)* ] suffix: [ $($suffix:tt)* ] ) => {
-        json_closure_replace! { $($prefix)* sugars_macros::hash_map_fn! { $($pre)* => $($post)* } $($suffix)* }
-    };
-    
-    // No arrow found - keep original block
-    ( prefix: [ $($prefix:tt)* ] inner: [ $($inner:tt)+ ] suffix: [ $($suffix:tt)* ] ) => {
-        json_closure_replace! { $($prefix)* { $($inner)+ } $($suffix)* }
     };
 }
 
@@ -196,3 +95,60 @@ macro_rules! await_ok {
     };
 }
 
+/// JSON closure macro that transforms JSON-like syntax to hash_map! calls
+/// 
+/// Transforms `{"key" => "value"}` syntax to proper HashMap construction
+/// Used by the json_syntax proc macro attribute
+#[cfg(feature = "hashbrown-json")]
+#[macro_export]
+macro_rules! json_closure {
+    ( $($input:tt)* ) => {
+        json_closure_internal! { $($input)* }
+    };
+}
+
+/// Internal implementation for JSON closure transformation
+#[cfg(feature = "hashbrown-json")]
+#[macro_export]
+macro_rules! json_closure_internal {
+    // Transform tokens by checking for arrow syntax and replacing JSON patterns
+    ( $($tokens:tt)* ) => {
+        json_closure_arrow_check! { $($tokens)* }
+    };
+}
+
+/// Check for arrow syntax in blocks
+#[cfg(feature = "hashbrown-json")]
+#[macro_export]
+macro_rules! json_closure_arrow_check {
+    // Check for arrow syntax in blocks
+    ({ $($tokens:tt)* }) => {
+        json_closure_replace! { { $($tokens)* } }
+    };
+    // Pass through other tokens
+    ($tokens:tt) => {
+        $tokens
+    };
+}
+
+/// Replace JSON patterns with hash_map! calls
+#[cfg(feature = "hashbrown-json")]
+#[macro_export]
+macro_rules! json_closure_replace {
+    // Transform JSON object with arrow syntax to hash_map! call
+    ({ $($key:literal => $value:expr),* $(,)? }) => {
+        $crate::hash_map! { $($key => $value),* }
+    };
+    // Transform JSON object with mixed syntax
+    ({ $($key:expr => $value:expr),* $(,)? }) => {
+        $crate::hash_map! { $($key => $value),* }
+    };
+    // Pass through blocks that don't match JSON syntax
+    ({ $($tokens:tt)* }) => {
+        { $($tokens)* }
+    };
+    // Pass through other tokens unchanged
+    ($tokens:tt) => {
+        $tokens
+    };
+}

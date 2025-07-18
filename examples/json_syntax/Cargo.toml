@@ -7,11 +7,9 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 # Core sugars functionality
-sugars_collections = { path = "../../packages/collections" }
-sugars_builders = { path = "../../packages/builders" }
+cyrup_sugars = { path = "../../packages/cyrup-sugars", features = ["all"] }
 sugars_llm = { path = "../../packages/llm" }
-cyrup_sugars = { path = "../../packages/cyrup-sugars", features = ["tokio-async", "hashbrown-json"] }
-sugars_macros = { path = "../../packages/macros" }
+sugars_macros = { version = "0.1.3", path = "../../packages/macros" }
 
 # Required for JSON object syntax
 hashbrown = { version = "0.15.4", features = ["serde"] }
@@ -23,4 +21,4 @@ tokio = { version = "1.0", features = ["full", "macros"] }
 
 [features]
 default = ["hashbrown-json"]
-hashbrown-json = ["sugars_collections/hashbrown-json", "sugars_builders/hashbrown-json"]
+hashbrown-json = ["cyrup_sugars/hashbrown-json"]

@@ -12,10 +12,10 @@ pub trait IntoHashMap {
     fn into_hashmap(self) -> hashbrown::HashMap<&'static str, &'static str>;
 }
 
-/// Implement IntoHashMap for closures (existing functionality)
-impl<F> IntoHashMap for F 
+/// Implement IntoHashMap for closures that return hashmaps (supports json_closure!)
+impl<F> IntoHashMap for F
 where
-    F: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>
+    F: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>,
 {
     fn into_hashmap(self) -> hashbrown::HashMap<&'static str, &'static str> {
         self()
@@ -52,7 +52,7 @@ macro_rules! json_method_impl {
     ($method_name:ident, $field_name:ident) => {
         pub fn $method_name<P>(mut self, params: P) -> Self
         where
-            P: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>
+            P: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>,
         {
             let config_map = params();
             let mut map = HashMap::new();
@@ -64,7 +64,6 @@ macro_rules! json_method_impl {
         }
     };
 }
-
 
 /// Wrapper type for JSON syntax closures
 pub struct JsonClosure<F>(F);
@@ -84,22 +83,129 @@ where
     }
 }
 
+/// Chat loop control enum
+#[derive(Debug, Clone)]
+pub enum ChatLoop {
+    Break,
+    Reprompt(String),
+}
+
+/// Provider trait
+pub trait Provider {
+    fn name(&self) -> &'static str;
+}
+
+/// Model trait
+pub trait Model {
+    fn name(&self) -> &'static str;
+}
+
+/// Provider types
+pub struct Providers;
+impl Providers {
+    pub fn openai() -> impl Provider {
+        OpenAIProvider
+    }
+
+    pub const OpenAI: OpenAIProvider = OpenAIProvider;
+}
+
+struct OpenAIProvider;
+impl Provider for OpenAIProvider {
+    fn name(&self) -> &'static str {
+        "openai"
+    }
+}
+
+/// Model types  
+pub struct Models;
+impl Models {
+    pub fn gpt4o_mini() -> impl Model {
+        Gpt4OMiniModel
+    }
+
+    pub const Gpt4OMini: Gpt4OMiniModel = Gpt4OMiniModel;
+}
+
+struct Gpt4OMiniModel;
+impl Model for Gpt4OMiniModel {
+    fn name(&self) -> &'static str {
+        "gpt-4o-mini"
+    }
+}
+
+/// Mistral provider
+pub struct Mistral;
+impl Mistral {
+    pub fn magistral_small() -> impl Model {
+        MagistralSmallModel
+    }
+
+    pub const MagistralSmall: MagistralSmallModel = MagistralSmallModel;
+}
+
+struct MagistralSmallModel;
+impl Model for MagistralSmallModel {
+    fn name(&self) -> &'static str {
+        "magistral-small"
+    }
+}
+
+/// Log module simulation
+pub struct Log;
+impl Log {
+    pub fn info(&self, _message: &str) {
+        println!("[INFO] {}", _message);
+    }
+}
+
+pub static log: Log = Log;
+
+/// IO module simulation
+pub mod io {
+    pub use std::io::*;
+    pub mod stdout {
+        pub fn flush() -> Result<(), std::io::Error> {
+            use std::io::Write;
+            std::io::stdout().flush()
+        }
+    }
+}
+
+/// Conversation types
+pub trait ConversationHandler {
+    fn latest_user_message(&self) -> &str;
+    fn last(&self) -> &ConversationMessage;
+}
+
+pub struct ConversationMessage {
+    pub message: String,
+}
+
+impl ConversationMessage {
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+}
+
+pub struct Conversation {
+    pub messages: Vec<ConversationMessage>,
+}
+
+impl ConversationHandler for Conversation {
+    fn latest_user_message(&self) -> &str {
+        "Hello"
+    }
+
+    fn last(&self) -> &ConversationMessage {
+        &self.messages[0]
+    }
+}
+
 /// Production-quality FluentAI agent builder with comprehensive configuration support
 pub struct FluentAi;
 
-/// Macro that transforms JSON object syntax into HashMap
-#[macro_export]
-macro_rules! json_object {
-    ({ $($key:expr => $value:expr),* $(,)? }) => {
-        {
-            let mut map = ::hashbrown::HashMap::new();
-            $(
-                map.insert($key, $value);
-            )*
-            map
-        }
-    };
-}
+// Remove duplicate macros and implementations
 
 /// Context types
 pub struct Context<T>(std::marker::PhantomData<T>);
@@ -127,11 +233,12 @@ pub struct NamedTool {
 }
 
 impl<T> Tool<T> {
-    pub fn new<P>(_params: P) -> Tool<T> 
+    pub fn new<P>(params: P) -> Tool<T>
     where
-        P: IntoHashMap
+        P: IntoHashMap,
     {
         // Store params in a real implementation
+        let _config_map = params.into_hashmap();
         Tool(std::marker::PhantomData)
     }
 }
@@ -206,6 +313,8 @@ pub struct AgentRoleBuilder {
     metadata: Option<HashMap<String, Value>>,
     #[allow(dead_code)]
     memory: Option<Library>,
+    #[allow(dead_code)]
+    model: Option<String>,
 }
 
 /// Message role enum
@@ -229,6 +338,24 @@ impl std::fmt::Display for MessageChunk {
     }
 }
 
+/// Bad chunk type for error handling
+#[derive(Debug, Clone)]
+pub struct BadChunk {
+    error: String,
+}
+
+impl BadChunk {
+    pub fn from_err(error: String) -> Self {
+        BadChunk { error }
+    }
+}
+
+impl From<BadChunk> for Result<MessageChunk, String> {
+    fn from(bad_chunk: BadChunk) -> Self {
+        Err(bad_chunk.error)
+    }
+}
+
 /// Intelligent conversational agent with advanced capabilities
 pub struct Agent {
     #[allow(dead_code)]
@@ -237,11 +364,14 @@ pub struct Agent {
     history: Vec<(MessageRole, String)>,
 }
 
-/// Mistral model types
-pub struct Mistral;
-
-impl Mistral {
-    pub const MAGISTRAL_SMALL: &'static str = "mistral-small";
+impl Agent {
+    /// Start chat - handles both string messages and callback functions
+    pub fn chat<T>(self, input: T) -> T::Output
+    where
+        T: ChatInput,
+    {
+        input.execute(self)
+    }
 }
 
 impl FluentAi {
@@ -258,14 +388,15 @@ impl FluentAi {
             additional_params: None,
             metadata: None,
             memory: None,
+            model: None,
         }
     }
 }
 
 impl AgentRoleBuilder {
     /// Set completion provider
-    pub fn completion_provider(mut self, _provider: impl std::any::Any) -> Self {
-        self.provider = Some("mistral-small".to_string());
+    pub fn completion_provider(mut self, provider: impl Model) -> Self {
+        self.provider = Some(provider.name().to_string());
         self
     }
 
@@ -287,9 +418,11 @@ impl AgentRoleBuilder {
         self
     }
 
-    /// Add contexts
-    pub fn context(mut self, contexts: impl std::any::Any) -> Self {
-        // In real implementation, would handle multiple contexts
+    /// Add contexts - accepts tuple that gets expanded
+    pub fn context<T>(mut self, contexts: T) -> Self
+    where
+        T: std::any::Any + 'static,
+    {
         self.contexts.push(Box::new(contexts));
         self
     }
@@ -302,16 +435,19 @@ impl AgentRoleBuilder {
         }
     }
 
-    /// Add tools
-    pub fn tools(mut self, tools: impl std::any::Any) -> Self {
+    /// Add tools - accepts tuple that gets expanded
+    pub fn tools<T>(mut self, tools: T) -> Self
+    where
+        T: std::any::Any + 'static,
+    {
         self.tools.push(Box::new(tools));
         self
     }
 
     /// Set additional parameters with JSON object syntax
-    pub fn additional_params<T>(mut self, params: T) -> Self 
+    pub fn additional_params<T>(mut self, params: T) -> Self
     where
-        T: IntoHashMap
+        T: IntoHashMap,
     {
         let config_map = params.into_hashmap();
         let mut map = HashMap::new();
@@ -322,6 +458,22 @@ impl AgentRoleBuilder {
         self
     }
 
+    /// Set additional parameters using json! macro
+    pub fn additional_params_json(mut self, params: Vec<(&'static str, &'static str)>) -> Self {
+        let mut map = HashMap::new();
+        for (k, v) in params {
+            map.insert(k.to_string(), Value::String(v.to_string()));
+        }
+        self.additional_params = Some(map);
+        self
+    }
+
+    /// Set model
+    pub fn model(mut self, model: impl Model) -> Self {
+        self.model = Some(model.name().to_string());
+        self
+    }
+
     /// Set memory
     pub fn memory(mut self, memory: Library) -> Self {
         self.memory = Some(memory);
@@ -329,9 +481,9 @@ impl AgentRoleBuilder {
     }
 
     /// Set metadata with JSON object syntax  
-    pub fn metadata<T>(mut self, metadata: T) -> Self 
+    pub fn metadata<T>(mut self, metadata: T) -> Self
     where
-        T: IntoHashMap
+        T: IntoHashMap,
     {
         let config_map = metadata.into_hashmap();
         let mut map = HashMap::new();
@@ -350,10 +502,10 @@ impl AgentRoleBuilder {
         self
     }
 
-    /// Handle conversation turns
+    /// Handle conversation turns with inline agent creation
     pub fn on_conversation_turn<F>(self, _handler: F) -> Self
     where
-        F: Fn(&str, &Agent) -> String,
+        F: Fn(&dyn ConversationHandler, &Agent) -> Agent,
     {
         self
     }
@@ -406,19 +558,73 @@ where
     }
 }
 
+/// Macro to handle Ok/Err pattern matching in closures
+#[macro_export]
+macro_rules! chunk_handler {
+    (|$param:ident| { Ok => $ok_expr:expr, Err($err:ident) => $err_expr:expr $(,)? }) => {
+        |$param: Result<MessageChunk, String>| -> Result<MessageChunk, String> {
+            match $param {
+                Ok(chunk) => Ok($ok_expr),
+                Err($err) => $err_expr,
+            }
+        }
+    };
+}
+
+// Removed duplicate json_params macro (defined in macros.rs)
+
+/// Macro for fluent builder with JSON syntax
+#[macro_export]
+macro_rules! fluent_agent {
+    (
+        $agent_name:expr =>
+        provider: $provider:expr,
+        temperature: $temp:expr,
+        max_tokens: $tokens:expr,
+        system_prompt: $prompt:expr,
+        contexts: [ $($context:expr),* ],
+        tools: [ $($tool:expr),* ],
+        additional_params: { $($ap_key:expr => $ap_value:expr),* },
+        memory: $memory:expr,
+        metadata: { $($md_key:expr => $md_value:expr),* }
+    ) => {
+        FluentAi::agent_role($agent_name)
+            .completion_provider($provider)
+            .temperature($temp)
+            .max_tokens($tokens)
+            .system_prompt($prompt)
+            $(
+                .context($context)
+            )*
+            $(
+                .tools($tool)
+            )*
+            .additional_params([$(($ap_key, $ap_value)),*])
+            .memory($memory)
+            .metadata([$(($md_key, $md_value)),*])
+    };
+}
+
 impl Agent {
-    /// Set conversation history
+    /// Set conversation history - single entry
     pub fn conversation_history(mut self, role: MessageRole, message: &str) -> Self {
         self.history.push((role, message.to_string()));
         self
     }
+}
 
-    /// Start chat
-    pub fn chat(
-        self,
-        message: impl Into<String>,
-    ) -> Result<AsyncStream<MessageChunk>, Box<dyn std::error::Error>> {
-        let message = message.into();
+/// Trait for different chat input types
+pub trait ChatInput {
+    type Output;
+    fn execute(self, agent: Agent) -> Self::Output;
+}
+
+/// Implementation for string messages
+impl<S: Into<String>> ChatInput for S {
+    type Output = AsyncStream<MessageChunk>;
+
+    fn execute(self, _agent: Agent) -> Self::Output {
+        let message = self.into();
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
         // Send a simple response
@@ -428,7 +634,36 @@ impl Agent {
         };
         let _ = tx.send(chunk);
 
-        Ok(AsyncStream::new(rx))
+        AsyncStream::new(rx)
+    }
+}
+
+/// Chat callback wrapper
+pub struct ChatCallback<F> {
+    pub callback: F,
+}
+
+/// Implementation for callback functions  
+impl<F> ChatInput for ChatCallback<F>
+where
+    F: Fn(&dyn ConversationHandler) -> ChatLoop,
+{
+    type Output = Result<Box<dyn Iterator<Item = String>>, Box<dyn std::error::Error>>;
+
+    fn execute(self, _agent: Agent) -> Self::Output {
+        let conversation = Conversation {
+            messages: vec![ConversationMessage {
+                message: "Hello".to_string(),
+            }],
+        };
+
+        let result = (self.callback)(&conversation);
+        match result {
+            ChatLoop::Break => Ok(Box::new(std::iter::empty()) as Box<dyn Iterator<Item = String>>),
+            ChatLoop::Reprompt(msg) => {
+                Ok(Box::new(std::iter::once(msg)) as Box<dyn Iterator<Item = String>>)
+            }
+        }
     }
 }
 

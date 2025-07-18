@@ -2,6 +2,32 @@
 
 This guide demonstrates how to use OneOrMany, a non-empty collection type that guarantees at least one element in the cyrup-sugars ecosystem.
 
+## Installation
+
+Add cyrup-sugars to your `Cargo.toml`:
+
+```toml
+[dependencies]
+cyrup_sugars = "0.1.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+```
+
+Or for development with local path:
+
+```toml
+[dependencies]
+cyrup_sugars = { path = "path/to/cyrup-sugars" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+```
+
+Then import the prelude:
+
+```rust
+use cyrup_sugars::prelude::*;
+```
+
 ## Table of Contents
 
 1. [Overview](#overview)
@@ -31,7 +57,7 @@ OneOrMany is a non-empty collection that wraps `ZeroOneOrMany<T>`, ensuring the 
 ### Single Element
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 // Create with a single element
 let single = OneOrMany::one("hello");
@@ -42,7 +68,7 @@ assert_eq!(single.first(), &"hello");
 ### Multiple Elements
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 // Create from a Vec (fails if empty)
 let multiple = OneOrMany::many(vec![1, 2, 3]).unwrap();
@@ -56,7 +82,7 @@ assert_eq!(multiple.first(), &1);
 ### From Single Value
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 // Using From trait
 let from_value: OneOrMany<i32> = 42.into();
@@ -66,7 +92,7 @@ assert_eq!(from_value.len(), 1);
 ### From Iterator
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 // From iterator (panics if empty)
 let from_iter: OneOrMany<i32> = vec![1, 2, 3].into_iter().collect();
@@ -78,7 +104,7 @@ assert_eq!(from_iter.len(), 3);
 ### Accessing Elements
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 let collection = OneOrMany::many(vec!["first", "second", "third"]).unwrap();
 
@@ -98,7 +124,7 @@ assert_eq!(rest_iter, vec![&"second", &"third"]);
 ### Iteration
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 let collection = OneOrMany::many(vec![1, 2, 3]).unwrap();
 
@@ -118,7 +144,7 @@ for item in collection.clone() {
 ### Adding Elements
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 let original = OneOrMany::one(1);
 
@@ -135,7 +161,7 @@ assert_eq!(with_inserted.len(), 3);
 ### Mapping Operations
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 let numbers = OneOrMany::many(vec![1, 2, 3]).unwrap();
 
@@ -155,7 +181,7 @@ assert!(doubled.is_ok());
 ### With Hashbrown HashMap
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 use hashbrown::HashMap;
 
 let mut map = HashMap::new();
@@ -170,7 +196,7 @@ assert_eq!(collection.len(), 2);
 ### With JSON Syntax (requires hashbrown-json feature)
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 // Using closure syntax for JSON objects
 let collection: OneOrMany<(&str, &str)> = OneOrMany::from_json(|| {
@@ -188,7 +214,7 @@ assert_eq!(collection.len(), 2);
 ### Merging Multiple Collections
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 let first = OneOrMany::one(1);
 let second = OneOrMany::many(vec![2, 3]).unwrap();
@@ -203,7 +229,7 @@ assert_eq!(merged.len(), 4);
 ### Merging References
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 let first = OneOrMany::one(1);
 let second = OneOrMany::many(vec![2, 3]).unwrap();
@@ -218,7 +244,7 @@ assert_eq!(merged_refs.len(), 3);
 ### JSON Serialization
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 use serde_json;
 
 let single = OneOrMany::one(42);
@@ -233,7 +259,7 @@ assert_eq!(json, "[1,2,3]");
 ### JSON Deserialization
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 use serde_json;
 
 // From single value
@@ -254,7 +280,7 @@ assert!(empty_result.is_err());
 ### Configuration Values
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 #[derive(Debug)]
 struct Config {
@@ -288,7 +314,7 @@ println!("Primary server: {}", config.primary_server());
 ### Builder Pattern Integration
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 struct HttpClient {
     endpoints: OneOrMany<String>,
@@ -333,7 +359,7 @@ let client = HttpClient::new()
 ### Error Handling
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 enum ValidationError {
     EmptyField,
@@ -365,7 +391,7 @@ assert_eq!(result.len(), 2);
 ### 1. Use OneOrMany for Required Fields
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 // Good: Express that at least one tag is required
 struct BlogPost {
@@ -385,7 +411,7 @@ struct BlogPostBad {
 ### 2. Handle Empty Collections Early
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 fn process_items(items: Vec<String>) -> Result<OneOrMany<String>, &'static str> {
     // Convert early to catch empty cases
@@ -402,7 +428,7 @@ match process_items(vec![]) {
 ### 3. Leverage Type Safety
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 // Function that requires at least one item
 fn process_required_items(items: OneOrMany<String>) -> String {
@@ -418,7 +444,7 @@ let result = process_required_items(items);
 ### 4. Use Appropriate Conversion Methods
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 // Good: Use From for single items
 let single: OneOrMany<i32> = 42.into();
@@ -435,7 +461,7 @@ let from_vec: OneOrMany<i32> = vec![1, 2, 3].try_into().unwrap();
 ### Load Balancer Configuration
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 use std::net::SocketAddr;
 
 struct LoadBalancer {
@@ -481,7 +507,7 @@ println!("All servers: {:?}", lb.all_servers());
 ### Plugin System
 
 ```rust
-use sugars_collections::OneOrMany;
+use cyrup_sugars::prelude::*;
 
 trait Plugin {
     fn name(&self) -> &str;

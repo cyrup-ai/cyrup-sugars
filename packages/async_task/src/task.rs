@@ -6,8 +6,8 @@
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use tokio::sync::oneshot;
 use sugars_collections::ZeroOneOrMany;
+use tokio::sync::oneshot;
 
 /// Marker trait to prevent Result types in AsyncTask/AsyncStream
 ///
@@ -48,9 +48,7 @@ where
                 drop(tx); // Closed channel
                 Self { receiver: rx }
             }
-            ZeroOneOrMany::One(receiver) => {
-                Self { receiver }
-            }
+            ZeroOneOrMany::One(receiver) => Self { receiver },
             ZeroOneOrMany::Many(receivers) => {
                 // Take the first receiver
                 if let Some(receiver) = receivers.into_iter().next() {

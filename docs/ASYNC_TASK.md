@@ -2,6 +2,30 @@
 
 This guide demonstrates how to use AsyncTask with single and multiple receivers in the cyrup-sugars ecosystem.
 
+## Installation
+
+Add cyrup-sugars to your `Cargo.toml`:
+
+```toml
+[dependencies]
+cyrup_sugars = "0.1.3"
+tokio = { version = "1.0", features = ["full"] }
+```
+
+Or for development with local path:
+
+```toml
+[dependencies]
+cyrup_sugars = { path = "path/to/cyrup-sugars" }
+tokio = { version = "1.0", features = ["full"] }
+```
+
+Then import the prelude:
+
+```rust
+use cyrup_sugars::prelude::*;
+```
+
 ## Table of Contents
 
 1. [Overview](#overview)
@@ -27,8 +51,7 @@ AsyncTask is a concrete async primitive that wraps oneshot channels to provide a
 ### Basic Single Receiver
 
 ```rust
-use sugars_async_task::AsyncTask;
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 use tokio::sync::oneshot;
 
 #[tokio::main]
@@ -53,7 +76,7 @@ async fn main() {
 ### From Future Pattern
 
 ```rust
-use sugars_async_task::AsyncTask;
+use cyrup_sugars::prelude::*;
 
 async fn some_async_operation() -> String {
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
@@ -73,7 +96,7 @@ async fn main() {
 ### From Value Pattern
 
 ```rust
-use sugars_async_task::AsyncTask;
+use cyrup_sugars::prelude::*;
 
 #[tokio::main]
 async fn main() {
@@ -90,8 +113,7 @@ async fn main() {
 ### Race Condition - First Result Wins
 
 ```rust
-use sugars_async_task::AsyncTask;
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 use tokio::sync::oneshot;
 
 #[tokio::main]
@@ -129,8 +151,7 @@ async fn main() {
 ### Parallel Processing with Multiple Sources
 
 ```rust
-use sugars_async_task::AsyncTask;
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 use tokio::sync::oneshot;
 
 async fn process_data_source_1() -> String {
@@ -184,8 +205,7 @@ async fn main() {
 ### Zero Receivers (Empty)
 
 ```rust
-use sugars_async_task::AsyncTask;
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 #[tokio::main]
 async fn main() {
@@ -200,8 +220,7 @@ async fn main() {
 ### One Receiver
 
 ```rust
-use sugars_async_task::AsyncTask;
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 use tokio::sync::oneshot;
 
 #[tokio::main]
@@ -223,8 +242,7 @@ async fn main() {
 ### Many Receivers
 
 ```rust
-use sugars_async_task::AsyncTask;
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 use tokio::sync::oneshot;
 
 #[tokio::main]
@@ -254,8 +272,7 @@ async fn main() {
 ### Timeout Pattern
 
 ```rust
-use sugars_async_task::AsyncTask;
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 use tokio::sync::oneshot;
 use tokio::time::{timeout, Duration};
 
@@ -282,8 +299,7 @@ async fn main() {
 ### Fallback Pattern
 
 ```rust
-use sugars_async_task::AsyncTask;
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 use tokio::sync::oneshot;
 
 async fn primary_service() -> Result<String, &'static str> {
@@ -327,8 +343,7 @@ async fn main() {
 ### Load Balancing Pattern
 
 ```rust
-use sugars_async_task::AsyncTask;
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 use tokio::sync::oneshot;
 
 async fn server_1() -> String {
@@ -380,8 +395,7 @@ async fn main() {
 ### 1. Proper Error Handling
 
 ```rust
-use sugars_async_task::AsyncTask;
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 use tokio::sync::oneshot;
 
 // Good: Handle errors before creating AsyncTask
@@ -407,8 +421,7 @@ async fn main() {
 ### 2. Channel Management
 
 ```rust
-use sugars_async_task::AsyncTask;
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 use tokio::sync::oneshot;
 
 #[tokio::main]
@@ -439,8 +452,7 @@ async fn main() {
 ### 3. Resource Management
 
 ```rust
-use sugars_async_task::AsyncTask;
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 use tokio::sync::oneshot;
 
 #[tokio::main]
@@ -467,8 +479,7 @@ async fn main() {
 ### Stream Processing with AsyncTask
 
 ```rust
-use sugars_async_task::AsyncTask;
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 use tokio::sync::oneshot;
 
 async fn process_stream_data(data: Vec<i32>) -> i32 {
@@ -494,8 +505,7 @@ async fn main() {
 ### Multiple Data Sources
 
 ```rust
-use sugars_async_task::AsyncTask;
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 use tokio::sync::oneshot;
 
 async fn fetch_from_database() -> String {

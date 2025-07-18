@@ -1,79 +1,52 @@
-//! Proc macros for transparent JSON syntax in builder patterns
-
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
+use syn::{
+    parse_macro_input, visit_mut::{self, VisitMut}, Expr, ExprCall, ExprPath, ItemFn, PathArguments,
+};
 
-/// Attribute macro that automatically transforms JSON syntax in function bodies
-///
-/// This macro finds patterns like `.method({"key" => "value"})` and transforms them
-/// to `.method(sugars_collections::hash_map!{"key" => "value"})` automatically.
-///
-/// Usage:
-/// ```rust
-/// #[json_syntax]
-/// fn main() {
-///     let builder = FluentAi::agent_role("example")
-///         .additional_params({"beta" => "true"})  // <- automatically transformed
-///         .metadata({"key" => "val"});            // <- automatically transformed
-/// }
-/// ```
+struct JsonSyntaxTransformer;
+
+impl VisitMut for JsonSyntaxTransformer {
+    fn visit_expr_mut(&mut self, expr: &mut Expr) {
+        if let Expr::Call(call_expr) = expr {
+            // Fix turbofish syntax: `foo<T>()` -> `foo::<T>()`
+            if let Expr::Path(ExprPath { qself: None, path, .. }) = &*call_expr.func {
+                if let Some(segment) = path.segments.last() {
+                    if let PathArguments::AngleBracketed(_) = &segment.arguments {
+                        let mut new_path = path.clone();
+                        if let Some(last_mut) = new_path.segments.last_mut() {
+                            let args = std::mem::replace(&mut last_mut.arguments, PathArguments::None);
+                            let new_func_tokens = quote! { #new_path::#args };
+                            if let Ok(new_func) = syn::parse2(new_func_tokens) {
+                                call_expr.func = Box::new(new_func);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Transform JSON-like blocks: `method({ "k" => "v" })` -> `method(sugars_collections::hash_map!{ "k" => "v" })`
+            if let Some(first_arg) = call_expr.args.first_mut() {
+                if let Expr::Block(block_expr) = first_arg {
+                    if quote!(#block_expr).to_string().contains(" => ") {
+                        let new_arg_tokens = quote! { sugars_collections::hash_map! #block_expr };
+                        if let Ok(new_arg) = syn::parse2(new_arg_tokens) {
+                            *first_arg = new_arg;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Standard pre-order traversal.
+        visit_mut::visit_expr_mut(self, expr);
+    }
+}
+
 #[proc_macro_attribute]
 pub fn json_syntax(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    // For now, just pass through the input unchanged
-    // The transformation happens in the builder methods themselves
-    item
+    let mut function = parse_macro_input!(item as ItemFn);
+    let mut transformer = JsonSyntaxTransformer;
+    transformer.visit_block_mut(&mut function.block);
+    function.into_token_stream().into()
 }
-
-
-
-
-
-
-/// Creates a closure that returns a hashbrown HashMap from key-value pairs
-///
-/// This replaces the macro_rules! version to work in proc-macro crates
-///
-/// Usage:
-/// ```rust
-/// use sugars_macros::hash_map_fn;
-///
-/// let map_fn = hash_map_fn!{"key" => "value", "foo" => "bar"};
-/// let map = map_fn();
-/// ```
-#[proc_macro]
-pub fn hash_map_fn(input: TokenStream) -> TokenStream {
-    // Convert the input to a string and manually parse key => value pairs
-    let input_str = input.to_string();
-
-    // Transform "key" => "value" pairs to ("key", "value") tuples
-    let parts: Vec<&str> = input_str.split(',').collect();
-    let mut tuple_pairs = Vec::new();
-
-    for part in parts {
-        let trimmed = part.trim();
-        if let Some(arrow_pos) = trimmed.find(" => ") {
-            let key = trimmed[..arrow_pos].trim();
-            let value = trimmed[arrow_pos + 4..].trim();
-            tuple_pairs.push(format!("({}, {})", key, value));
-        } else if let Some(arrow_pos) = trimmed.find("=>") {
-            let key = trimmed[..arrow_pos].trim();
-            let value = trimmed[arrow_pos + 2..].trim();
-            tuple_pairs.push(format!("({}, {})", key, value));
-        }
-    }
-
-    let tuple_str = tuple_pairs.join(", ");
-    let parsed_tokens: proc_macro2::TokenStream = tuple_str.parse().unwrap_or_default();
-
-    quote! {
-        || {
-            <::hashbrown::HashMap::<_, _> as ::core::iter::FromIterator<_>>::from_iter([
-                #parsed_tokens
-            ])
-        }
-    }
-    .into()
-}
-
-// Note: closures module removed since proc-macro crates 
-// cannot export macro_rules! macros alongside procedural macros

@@ -2,6 +2,32 @@
 
 This guide demonstrates how to use ZeroOneOrMany, a flexible collection type that can hold zero, one, or many values with optimal memory usage in the cyrup-sugars ecosystem.
 
+## Installation
+
+Add cyrup-sugars to your `Cargo.toml`:
+
+```toml
+[dependencies]
+cyrup_sugars = "0.1.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+```
+
+Or for development with local path:
+
+```toml
+[dependencies]
+cyrup_sugars = { path = "path/to/cyrup-sugars" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+```
+
+Then import the prelude:
+
+```rust
+use cyrup_sugars::prelude::*;
+```
+
 ## Table of Contents
 
 1. [Overview](#overview)
@@ -37,7 +63,7 @@ ZeroOneOrMany is a collection that can hold zero, one, or many values of type `T
 ### Empty Collection
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 // Create empty collection
 let empty = ZeroOneOrMany::none();
@@ -48,7 +74,7 @@ assert!(empty.is_empty());
 ### Single Element
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 // Create with single element
 let single = ZeroOneOrMany::one("hello");
@@ -59,7 +85,7 @@ assert_eq!(single.first(), Some(&"hello"));
 ### Multiple Elements
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 // Create from Vec
 let multiple = ZeroOneOrMany::many(vec![1, 2, 3]);
@@ -74,7 +100,7 @@ assert!(empty_vec.is_empty());
 ### From Iterator
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 // From iterator
 let from_iter: ZeroOneOrMany<i32> = vec![1, 2, 3].into_iter().collect();
@@ -90,7 +116,7 @@ assert!(empty_iter.is_empty());
 ### Pattern Matching
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 let collection = ZeroOneOrMany::many(vec![1, 2, 3]);
 
@@ -104,7 +130,7 @@ match collection {
 ### Safe Access Methods
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 let collection = ZeroOneOrMany::one(42);
 
@@ -126,7 +152,7 @@ if collection.is_empty() {
 ### Accessing Elements
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 let collection = ZeroOneOrMany::many(vec!["first", "second", "third"]);
 
@@ -146,7 +172,7 @@ assert_eq!(rest_iter, vec![&"second", &"third"]);
 ### Iteration Patterns
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 let collection = ZeroOneOrMany::many(vec![1, 2, 3]);
 
@@ -177,7 +203,7 @@ match &collection {
 ### Adding Elements
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 let empty = ZeroOneOrMany::none();
 
@@ -198,7 +224,7 @@ assert_eq!(with_inserted.len(), 3);
 ### Mapping Operations
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 // Map empty collection
 let empty: ZeroOneOrMany<i32> = ZeroOneOrMany::none();
@@ -219,7 +245,7 @@ assert_eq!(mapped_multiple.len(), 3);
 ### Try Map with Error Handling
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 let numbers = ZeroOneOrMany::many(vec![1, 2, 3]);
 
@@ -240,7 +266,7 @@ assert!(result.is_err());
 ### With Hashbrown HashMap
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 use hashbrown::HashMap;
 
 let mut map = HashMap::new();
@@ -260,7 +286,7 @@ assert!(empty_collection.is_empty());
 ### With JSON Syntax (requires hashbrown-json feature)
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 // Using closure syntax for JSON objects
 let collection: ZeroOneOrMany<(&str, &str)> = ZeroOneOrMany::from_json(|| {
@@ -278,7 +304,7 @@ assert_eq!(collection.len(), 2);
 ### Merging Multiple Collections
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 let first = ZeroOneOrMany::one(1);
 let second = ZeroOneOrMany::many(vec![2, 3]);
@@ -293,7 +319,7 @@ assert_eq!(merged.len(), 3);
 ### Merging References
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 let first = ZeroOneOrMany::one(1);
 let second = ZeroOneOrMany::many(vec![2, 3]);
@@ -309,7 +335,7 @@ assert_eq!(merged_refs.len(), 3);
 ### JSON Serialization
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 use serde_json;
 
 // Empty serializes to null
@@ -331,7 +357,7 @@ assert_eq!(json, "[1,2,3]");
 ### JSON Deserialization
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 use serde_json;
 
 // From null
@@ -356,7 +382,7 @@ assert!(from_empty.is_empty());
 ### Optional Configuration
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 #[derive(Debug)]
 struct ServerConfig {
@@ -401,7 +427,7 @@ println!("Has middleware: {}", config.has_middleware());
 ### Flexible Input Handling
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 fn process_inputs(inputs: ZeroOneOrMany<String>) -> String {
     match inputs {
@@ -422,7 +448,7 @@ let result3 = process_inputs(ZeroOneOrMany::many(vec!["input1".to_string(), "inp
 ### Builder Pattern with Optional Lists
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 struct DatabaseQuery {
     table: String,
@@ -497,7 +523,7 @@ println!("SQL: {}", query.build_sql());
 ### 1. Use Pattern Matching for Variant Handling
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 fn handle_collection(items: ZeroOneOrMany<String>) {
     match items {
@@ -523,7 +549,7 @@ fn handle_collection(items: ZeroOneOrMany<String>) {
 ### 2. Leverage Type Safety for Optional Collections
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 // Good: Express optional nature clearly
 struct ApiResponse {
@@ -541,7 +567,7 @@ struct ApiResponseBad {
 ### 3. Use Appropriate Creation Methods
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 // Good: Use specific constructors
 let empty = ZeroOneOrMany::none();
@@ -555,7 +581,7 @@ let from_iterator: ZeroOneOrMany<i32> = (0..5).collect();
 ### 4. Handle Empty Cases Gracefully
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 fn process_safely(items: ZeroOneOrMany<String>) -> String {
     if items.is_empty() {
@@ -572,7 +598,7 @@ fn process_safely(items: ZeroOneOrMany<String>) -> String {
 ### Event Handler System
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 
 type EventHandler = Box<dyn Fn(&str) + Send + Sync>;
 
@@ -628,7 +654,7 @@ bus.emit("user_login", "user123");
 ### Configuration System
 
 ```rust
-use sugars_collections::ZeroOneOrMany;
+use cyrup_sugars::prelude::*;
 use std::collections::HashMap;
 
 #[derive(Debug)]

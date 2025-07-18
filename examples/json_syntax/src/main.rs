@@ -3,8 +3,8 @@
 //! This example demonstrates the exact JSON object syntax shown in the
 //! cyrup_sugars README.md file. All syntax works exactly as documented.
 
-use sugars_llm::*;
-
+use cyrup_sugars::prelude::*;
+use sugars_llm::{*};
 // Helper trait for the example
 trait ExecToText {
     fn exec_to_text(&self) -> String;
@@ -23,31 +23,12 @@ fn process_turn() -> String {
 }
 
 #[tokio::main]
+#[sugars_macros::json_syntax]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("🤖 AI Agent Builder Example");
-    println!("Demonstrating the exact JSON object syntax from README.md");
-    println!();
-    
-    // Test various JSON syntax patterns
-    println!("✅ Testing array syntax variations:");
-    
-    // Single key-value pair
-    let _test1 = Tool::<Perplexity>::new([("single", "value")]);
-    println!("  - Single pair: Tool::new([('single', 'value')])");
-    
-    // Multiple key-value pairs
-    let _test2 = Tool::<Perplexity>::new([("key1", "val1"), ("key2", "val2")]);
-    println!("  - Multiple pairs: Tool::new([('key1', 'val1'), ('key2', 'val2')])");
-    
-    // Zero pairs (empty)
-    let _test3 = Tool::<Perplexity>::new([]);
-    println!("  - Empty array: Tool::new([])");
-    
-    println!("✅ All syntax variations working correctly!");
-
-    let _stream = FluentAi::agent_role("rusty-squire")
-    .completion_provider(Mistral::MAGISTRAL_SMALL)
+    let stream = FluentAi::agent_role("rusty-squire")
+    .completion_provider(Mistral::MagistralSmall)
     .temperature(1.0)
     .max_tokens(8000)
     .system_prompt("Act as a Rust developers 'right hand man'.
@@ -61,45 +42,65 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Today is {{ date }}
 
         ~ Be Useful, Not Thorough")
-    .context(( // trait Context
-        Context::<File>::of("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
-        Context::<Files>::glob("/home/kloudsamurai/cyrup-ai/**/*.{md,txt}"),
-        Context::<Directory>::of("/home/kloudsamurai/cyrup-ai/agent-role/ambient-rust"),
-        Context::<Github>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}")
-    ))
-    .mcp_server::<Stdio>().bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
-    .tools(( // trait Tool
-        Tool::<Perplexity>::new([("citations", "true")]),
+    .context( // trait Context
+        Context<File>::of("/home/kloudsamurai/ai_docs/mistral_agents.pdf"),
+        Context<Files>::glob("/home/kloudsamurai/cyrup-ai/**/*.{md,txt}"),
+        Context<Directory>::of("/home/kloudsamurai/cyrup-ai/agent-role/ambient-rust"),
+        Context<Github>::glob("/home/kloudsamurai/cyrup-ai/**/*.{rs,md}")
+    )
+    .mcp_server<Stdio>::bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
+    .tools( // trait Tool
+        Tool<Perplexity>::new({
+            "citations" => "true"
+        }),
         Tool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
-    )) // ZeroOneOrMany `Tool` || `McpTool` || NamedTool (WASM)
+    ) // ZeroOneOrMany `Tool` || `McpTool` || NamedTool (WASM)
 
-    .additional_params([("beta", "true")])
+    .additional_params({"beta" =>  "true"})
     .memory(Library::named("obsidian_vault"))
-    .metadata([("key", "val"), ("foo", "bar")])
-    .on_tool_result(|_results| {
-        // do stuf
+    .metadata({ "key" => "val", "foo" => "bar" })
+    .on_tool_result(|results| {
+        log.info("Agent: Tool results");
     })
-    .on_conversation_turn(|_conversation, _agent| {
-        println!("[INFO] Agent: Last conversation turn");
-        // your custom logic - return a processed message
-        process_turn()
+    .on_conversation_turn(|conversation, agent| {
+        log.info("Agent: " + conversation.last().message())
     })
-    .on_chunk(|chunk| {          // unwrap chunk closure :: NOTE: THIS MUST PRECEDE .chat()
-        match chunk {            // `.chat()` returns AsyncStream<MessageChunk> vs. AsyncStream<Result<MessageChunk>>
-            Ok(chunk) => {
-                println!("{}", chunk);   // stream response here or from the AsyncStream .chat() returns
-                Ok(chunk)
+    .completion_provider(Providers::OpenAI)
+    .model(Models::Gpt4OMini)
+    .temperature(0.7)
+    .on_chunk(|chunk| {
+        // Real-time streaming - print each token as it arrives
+        // All formatting and coloring happens automatically here
+        print!("{}", chunk);
+        io::stdout().flush().unwrap();
+    })
+    .chat(|conversation| {
+        let user_input = conversation.latest_user_message();
+        
+        // Pure logic - no formatting, just conversation flow control
+        match user_input.to_lowercase().as_str() {
+            "quit" | "exit" | "bye" => {
+                ChatLoop::Break
             },
-            Err(e) => Err(e)
+            input if input.starts_with("/help") => {
+                ChatLoop::Reprompt("Available commands: /help, quit/exit/bye, or just chat normally!".to_string())
+            },
+            input if input.contains("code") => {
+                let response = format!(
+                    "I see you mentioned code! Here's a Rust example: fn main() {{ println!(\"Hello!\"); }} Need help with a specific language?"
+                );
+                ChatLoop::Reprompt(response)
+            },
+            _ => {
+                // Simple response - builder handles all formatting automatically
+                let response = format!(
+                    "I understand: '{}'. How can I help you further?", 
+                    user_input
+                );
+                ChatLoop::Reprompt(response)
+            }
         }
     })
-    .into_agent() // Agent Now
-    .conversation_history(MessageRole::User, "What time is it in Paris, France")
-    .conversation_history(MessageRole::System, "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45")
-    .conversation_history(MessageRole::Assistant, "It's 1:45 AM CEST on July 7, 2025, in Paris, France. That's 9 hours ahead of your current time in Las Vegas.")
-    .chat("Hello")?; // AsyncStream<MessageChunk
-
-    println!("Chat stream initiated successfully!");
-
+    .collect();
     Ok(())
 }

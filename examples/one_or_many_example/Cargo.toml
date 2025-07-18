@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sugars_collections = { path = "../../packages/collections" }
+cyrup_sugars = { path = "../../packages/cyrup-sugars" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-hashbrown = { version = "0.15.4", features = ["serde"] }

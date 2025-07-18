@@ -34,8 +34,18 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-sugars_llm = { path = "../packages/llm" }
-hashbrown = "0.14"
+cyrup_sugars = { version = "0.1.3", features = ["hashbrown-json"] }
+hashbrown = "0.15.4"
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+```
+
+Or for development with local path:
+
+```toml
+[dependencies]
+cyrup_sugars = { path = "path/to/cyrup-sugars", features = ["hashbrown-json"] }
+hashbrown = "0.15.4"
 serde_json = "1.0"
 tokio = { version = "1.0", features = ["full"] }
 ```
@@ -43,6 +53,7 @@ tokio = { version = "1.0", features = ["full"] }
 ### Basic Usage
 
 ```rust
+use cyrup_sugars::prelude::*;
 use sugars_llm::*;
 
 #[tokio::main]
@@ -243,6 +254,7 @@ Users can use any of these equivalent syntaxes:
 ### Complete Example
 
 ```rust
+use cyrup_sugars::prelude::*;
 use sugars_llm::*;
 
 #[tokio::main]

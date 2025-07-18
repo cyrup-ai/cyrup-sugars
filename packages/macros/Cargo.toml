@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors = ["David Maple <david@cyrup.ai>"]
 description = "Procedural macros for cyrup_sugars JSON syntax and collections"
-repository = "https://github.com/cyrup-ai/sugars"
+repository = "https://github.com/cyrup-ai/cyrup-sugars"
 license = "MIT OR Apache-2.0"
 keywords = ["macros", "proc-macro", "json", "sugar"]
 categories = ["development-tools"]
@@ -16,9 +16,10 @@ proc-macro = true
 [dependencies]
 hashbrown = { version = "0.15.4", features = ["serde"] }
 workspace-hack = { version = "0.1", path = "../../workspace-hack" }
-syn = { version = "2.0", features = ["full", "extra-traits"] }
-quote = "1.0"
 proc-macro2 = "1.0"
+sugars_collections = { path = "../collections", version = "0.1.2" }
+syn = { version = "2.0.104", features = ["full", "extra-traits"] }
+quote = "1.0.40"
 
 [features]
 default = []

@@ -68,7 +68,7 @@ pub mod r#async {
 pub use sugars_macros as macros;
 
 // Re-export closure macros from collections (since proc-macro crates can't export macro_rules!)
-pub use sugars_collections::{on_result, on_chunk, on_error, await_result, await_ok};
+pub use sugars_collections::{await_ok, await_result, on_chunk, on_error, on_result};
 
 pub use sugars_gix as external;
 
@@ -93,24 +93,24 @@ pub use r#async::{
 
 // Re-export JSON syntax macros for hashbrown-json feature
 #[cfg(feature = "hashbrown-json")]
-pub use sugars_macros::hash_map_fn;
-#[cfg(feature = "hashbrown-json")]
-pub use sugars_collections::hash_map;
+pub use sugars_collections::{hash_map};
 
 /// Prelude module that brings common macros and types into scope
 pub mod prelude {
     //! Common imports for cyrup_sugars users
 
     // Re-export commonly used types
-    pub use crate::{AsyncResult, AsyncStream, AsyncTask, ByteSize, ByteSizeExt, OneOrMany, ZeroOneOrMany};
+    pub use crate::{
+        AsyncResult, AsyncStream, AsyncTask, ByteSize, ByteSizeExt, OneOrMany, ZeroOneOrMany,
+    };
 
     // Re-export JSON syntax macros when hashbrown-json feature is enabled
     #[cfg(feature = "hashbrown-json")]
-    pub use crate::{hash_map, hash_map_fn};
+    pub use crate::{hash_map};
 
     // Re-export async utilities
     pub use crate::r#async::{FutureExt, NotResult, StreamExt};
-    
+
     // Re-export closure macros for async stream handling
-    pub use crate::{on_result, on_chunk, on_error, await_result, await_ok};
+    pub use crate::{await_ok, await_result, on_chunk, on_error, on_result};
 }

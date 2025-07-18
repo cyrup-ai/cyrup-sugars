@@ -20,5 +20,5 @@ resolver = "2"
 version = "0.1.3"
 authors = ["David Maple <david@cyrup.ai>"]
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/cyrup-ai/sugars"
+repository = "https://github.com/cyrup-ai/cyrup-sugars"
 edition = "2024"
