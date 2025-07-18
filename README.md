@@ -90,14 +90,14 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-cyrup_sugars = "0.1.0"
+cyrup_sugars = "0.1.2"
 ```
 
 Or with specific features:
 
 ```toml
 [dependencies]
-cyrup_sugars = { version = "0.1", features = ["hashbrown-json"] }
+cyrup_sugars = { version = "0.1.2", features = ["hashbrown-json"] }
 ```
 
 ## Example
