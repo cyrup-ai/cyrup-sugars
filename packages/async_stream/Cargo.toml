@@ -1,6 +1,6 @@
 [package]
 name = "sugars_async_stream"
-version = "0.1.0"
+version = "0.1.2"
 edition = "2021"
 authors = ["David Maple <david@cyrup.ai>"]
 description = "Async stream utilities with multiple backend support"
@@ -13,8 +13,8 @@ categories = ["asynchronous", "concurrency"]
 path = "src/lib.rs"
 
 [dependencies]
-sugars_async_task = { path = "../async_task", version = "0.1.0" }
-sugars_collections = { path = "../collections", version = "0.1.0" }
+sugars_async_task = { path = "../async_task", version = "0.1.2" }
+sugars_collections = { path = "../collections", version = "0.1.2" }
 tokio = { version = "1.46.1", features = ["rt", "sync", "macros"], optional = true }
 futures = "0.3.31"
 parking_lot = { version = "0.12.4", optional = true }

@@ -1,6 +1,6 @@
 [package]
 name = "sugars_llm"
-version = "0.1.0"
+version = "0.1.2"
 edition = "2021"
 description = "LLM builders and domain objects for cyrup_sugars"
 license = "MIT OR Apache-2.0"
@@ -12,13 +12,13 @@ categories = ["development-tools", "asynchronous"]
 
 [dependencies]
 # Core async primitives from workspace
-cyrup_sugars = { path = "../cyrup-sugars", version = "0.1.0", features = ["tokio-async", "hashbrown-json"] }
+cyrup_sugars = { path = "../cyrup-sugars", version = "0.1.2", features = ["tokio-async", "hashbrown-json"] }
 
 # Macros for JSON object syntax
-sugars_macros = { path = "../macros", version = "0.1.0" }
+sugars_macros = { path = "../macros", version = "0.1.2" }
 
 # Collections for JSON syntax support
-sugars_collections = { path = "../collections", version = "0.1.0" }
+sugars_collections = { path = "../collections", version = "0.1.2" }
 
 # Async runtime and utilities
 tokio = { version = "1.0", features = ["full"] }
