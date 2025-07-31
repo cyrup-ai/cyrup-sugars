@@ -9,7 +9,7 @@ homepage = "https://github.com/cyrup-ai/cyrup-sugars"
 repository = "https://github.com/cyrup-ai/cyrup-sugars"
 documentation = "https://docs.rs/sugars_gix"
 keywords = ["rust", "git", "gix", "utilities", "cyrup"]
-categories = ["development-tools", "version-control"]
+categories = ["development-tools"]
 readme = "../../README.md"
 
 [lib]
