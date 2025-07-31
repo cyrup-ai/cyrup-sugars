@@ -14,13 +14,13 @@ readme = "../../README.md"
 
 [dependencies]
 # Core async primitives from workspace
-cyrup_sugars = { path = "../cyrup-sugars", features = ["tokio-async", "array-tuples"] }
+cyrup_sugars = { version = "0.2.0", path = "../cyrup-sugars", features = ["tokio-async", "array-tuples"] }
 
 # Macros for array tuple syntax
-sugars_macros = { path = "../macros" }
+sugars_macros = { version = "0.2.0", path = "../macros" }
 
 # Collections for array tuple syntax support
-sugars_collections = { path = "../collections" }
+sugars_collections = { version = "0.2.0", path = "../collections" }
 
 # Async runtime and utilities
 tokio = { version = "1", features = ["full"] }

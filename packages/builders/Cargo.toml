@@ -16,10 +16,10 @@ readme = "../../README.md"
 path = "src/lib.rs"
 
 [dependencies]
-sugars_collections = { path = "../collections" }
-sugars_async_task = { path = "../async_task" }
-sugars_macros = { path = "../macros" }
-hashbrown = "0.15.4"
+sugars_collections = { version = "0.2.0", path = "../collections" }
+sugars_async_task = { version = "0.2.0", path = "../async_task" }
+sugars_macros = { version = "0.2.0", path = "../macros" }
+hashbrown = { version = "0.15.4", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = { version = "1.0.140" }
 # workspace-hack = { version = "0.2.0", path = "../../workspace-hack" }
