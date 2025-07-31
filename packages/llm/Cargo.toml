@@ -1,14 +1,16 @@
 [package]
 name = "sugars_llm"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-description = "LLM builders and domain objects for cyrup_sugars"
+description = "LLM integration and AI agent builder utilities"
 license = "MIT OR Apache-2.0"
-authors = ["Cyrup AI <info@cyrup.ai>"]
-repository = "https://github.com/cyrup-ai/sugars"
+authors = ["David Maple <david@cyrup.ai>"]
+homepage = "https://github.com/cyrup-ai/cyrup-sugars"
+repository = "https://github.com/cyrup-ai/cyrup-sugars"
 documentation = "https://docs.rs/sugars_llm"
-keywords = ["llm", "ai", "builder", "async"]
+keywords = ["rust", "llm", "ai", "builder", "cyrup"]
 categories = ["development-tools", "asynchronous"]
+readme = "../../README.md"
 
 [dependencies]
 # Core async primitives from workspace

@@ -1,7 +1,16 @@
 [package]
 name = "sugars_macros"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+description = "Procedural macros for array tuple syntax and builder patterns"
+license = "MIT OR Apache-2.0"
+authors = ["David Maple <david@cyrup.ai>"]
+homepage = "https://github.com/cyrup-ai/cyrup-sugars"
+repository = "https://github.com/cyrup-ai/cyrup-sugars"
+documentation = "https://docs.rs/sugars_macros"
+keywords = ["rust", "macros", "proc-macro", "builder", "cyrup"]
+categories = ["development-tools::procedural-macro-helpers"]
+readme = "../../README.md"
 
 [lib]
 path = "src/lib.rs"

@@ -1,7 +1,16 @@
 [package]
 name = "sugars_collections"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+description = "Efficient collection types including ZeroOneOrMany and OneOrMany with array tuple syntax support"
+license = "MIT OR Apache-2.0"
+authors = ["David Maple <david@cyrup.ai>"]
+homepage = "https://github.com/cyrup-ai/cyrup-sugars"
+repository = "https://github.com/cyrup-ai/cyrup-sugars"
+documentation = "https://docs.rs/sugars_collections"
+keywords = ["rust", "utilities", "collections", "async", "cyrup"]
+categories = ["data-structures", "development-tools"]
+readme = "../../README.md"
 
 [lib]
 path = "src/lib.rs"

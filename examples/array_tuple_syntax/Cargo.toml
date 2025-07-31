@@ -1,9 +1,10 @@
 [package]
 name = "sugars-examples"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Example implementations demonstrating cyrup_sugars array tuple syntax"
 license = "MIT OR Apache-2.0"
+publish = false
 
 [dependencies]
 # Core sugars functionality

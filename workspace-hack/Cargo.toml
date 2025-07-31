@@ -1,7 +1,13 @@
 [package]
 name = "workspace-hack"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+description = "Workspace hack for optimizing build times"
+license = "MIT OR Apache-2.0"
+authors = ["David Maple <david@cyrup.ai>"]
+homepage = "https://github.com/cyrup-ai/cyrup-sugars"
+repository = "https://github.com/cyrup-ai/cyrup-sugars"
+documentation = "https://docs.rs/workspace-hack"
 publish = false
 autobins = false
 autotests = false

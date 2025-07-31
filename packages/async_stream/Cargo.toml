@@ -1,7 +1,16 @@
 [package]
 name = "sugars_async_stream"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+description = "Async stream utilities and abstractions for the cyrup-sugars ecosystem"
+license = "MIT OR Apache-2.0"
+authors = ["David Maple <david@cyrup.ai>"]
+homepage = "https://github.com/cyrup-ai/cyrup-sugars"
+repository = "https://github.com/cyrup-ai/cyrup-sugars"
+documentation = "https://docs.rs/sugars_async_stream"
+keywords = ["rust", "utilities", "async", "stream", "cyrup"]
+categories = ["asynchronous", "development-tools"]
+readme = "../../README.md"
 
 [lib]
 path = "src/lib.rs"

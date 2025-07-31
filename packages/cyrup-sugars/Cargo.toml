@@ -1,13 +1,16 @@
 [package]
 name = "cyrup_sugars"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-authors = ["CYRUP Contributors"]
-description = "Syntactic sugar utilities for Rust - collections, async patterns, and macros"
-repository = "https://github.com/cyrup/cyrup_sugars"
+authors = ["David Maple <david@cyrup.ai>"]
+description = "Main crate providing syntactic sugar and utilities for Rust development"
+homepage = "https://github.com/cyrup-ai/cyrup-sugars"
+repository = "https://github.com/cyrup-ai/cyrup-sugars"
+documentation = "https://docs.rs/cyrup_sugars"
 license = "MIT OR Apache-2.0"
-keywords = ["async", "collections", "macros", "utilities", "sugar"]
-categories = ["asynchronous", "data-structures", "rust-patterns"]
+keywords = ["rust", "utilities", "collections", "async", "cyrup"]
+categories = ["development-tools", "data-structures"]
+readme = "../../README.md"
 
 [lib]
 name = "cyrup_sugars"
@@ -37,7 +40,7 @@ futures = { version = "0.3.31", optional = true }
 parking_lot = { version = "0.12.4", optional = true }
 crossbeam = { version = "0.8.4", optional = true }
 async-channel = { version = "2.5.0", optional = true }
-workspace-hack = { version = "0.1", path = "../../workspace-hack" }
+workspace-hack = { version = "0.2.0", path = "../../workspace-hack" }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }
