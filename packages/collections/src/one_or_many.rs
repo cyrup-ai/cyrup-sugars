@@ -32,9 +32,13 @@ use std::marker::PhantomData;
 ///
 /// ### Examples
 /// ```rust
+/// use sugars_collections::OneOrMany;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let single = OneOrMany::one(42);
 /// let multiple = OneOrMany::many(vec![1, 2, 3])?;
 /// let pushed = single.with_pushed(43);
+/// # Ok(())
+/// # }
 /// ```
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct OneOrMany<T>(ZeroOneOrMany<T>);
@@ -48,6 +52,8 @@ impl fmt::Display for EmptyListError {
         write!(f, "OneOrMany cannot be empty")
     }
 }
+
+impl std::error::Error for EmptyListError {}
 
 // Core API
 impl<T> OneOrMany<T> {
@@ -74,15 +80,14 @@ impl<T> OneOrMany<T> {
     ///
     /// # Example
     /// ```rust
-    /// # /// # {
-    /// use cyrup_sugars::collections::OneOrMany;
+    /// use sugars_collections::OneOrMany;
     /// use hashbrown::HashMap;
-    ///
-    /// let map = hashbrown::hash_map! {
-    ///     "key1" => "value1",
-    ///     "key2" => "value2",
-    /// };
-    /// let collection: OneOrMany<(&str, &str)> = OneOrMany::from_hashmap(map)?;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let mut map = hashbrown::HashMap::new();
+    /// map.insert("key1", "value1");
+    /// map.insert("key2", "value2");
+    /// let collection: OneOrMany<(&str, &str)> = OneOrMany::<(&str, &str)>::from_hashmap(map)?;
+    /// # Ok(())
     /// # }
     /// ```
     #[inline]
@@ -103,19 +108,16 @@ impl<T> OneOrMany<T> {
     /// This method is designed to work with the hashbrown macros.
     ///
     /// # Example
-    /// ```rust
-    /// # /// # {
-    /// use cyrup_sugars::collections::OneOrMany;
-    /// use cyrup_sugars::macros::hashbrown::hash_map_fn;
-    ///
-    /// let collection: OneOrMany<(&str, &str)> = OneOrMany::from_json(hash_map_fn! {
-    ///     "beta" => "true",
-    ///     "version" => "2.1.0",
-    /// })?;
-    /// # }
+    /// ```ignore
+    /// use sugars_collections::OneOrMany;
+    /// use sugars_macros::hash_map_fn;
+    /// let collection: OneOrMany<(&str, &str)> = OneOrMany::from_array_tuple(hash_map_fn! [
+    ///     ("beta", "true"),
+    ///     ("version", "2.1.0"),
+    /// ])?;
     /// ```
     #[inline]
-    pub fn from_json<K, V, F>(f: F) -> Result<OneOrMany<(K, V)>, EmptyListError>
+    pub fn from_array_tuple<K, V, F>(f: F) -> Result<OneOrMany<(K, V)>, EmptyListError>
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
     {

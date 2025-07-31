@@ -15,7 +15,7 @@ workspace-hack = { version = "0.1", path = "../../workspace-hack" }
 
 [features]
 default = []
-hashbrown-json = []
+array-tuples = []
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

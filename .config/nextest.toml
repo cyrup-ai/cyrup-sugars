@@ -31,8 +31,8 @@ filter = 'test(macros)'
 [profile.gix-interop]
 filter = 'test(gix_interop)'
 
-[profile.hashbrown-json]
-filter = 'test(hashbrown_json)'
+[profile.array-tuples]
+filter = 'test(array_tuples)'
 
 [profile.serde]
 filter = 'test(serde)'

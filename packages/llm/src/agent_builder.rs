@@ -46,9 +46,9 @@ impl IntoHashMap for Vec<(&'static str, &'static str)> {
 // Re-export the hash_map macro for internal use
 pub use sugars_collections::hash_map;
 
-/// Internal macro that enables JSON syntax in builder methods
-/// This transforms {"key" => "value"} syntax to work transparently
-macro_rules! json_method_impl {
+/// Internal macro that enables array tuple syntax in builder methods
+/// This transforms [("key", "value")] syntax to work transparently
+macro_rules! array_tuple_method_impl {
     ($method_name:ident, $field_name:ident) => {
         pub fn $method_name<P>(mut self, params: P) -> Self
         where

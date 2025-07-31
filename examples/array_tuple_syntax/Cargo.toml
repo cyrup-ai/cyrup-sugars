@@ -2,7 +2,7 @@
 name = "sugars-examples"
 version = "0.1.0"
 edition = "2021"
-description = "Example implementations demonstrating cyrup_sugars JSON object syntax"
+description = "Example implementations demonstrating cyrup_sugars array tuple syntax"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
@@ -10,10 +10,10 @@ license = "MIT OR Apache-2.0"
 sugars_collections = { path = "../../packages/collections" }
 sugars_builders = { path = "../../packages/builders" }
 sugars_llm = { path = "../../packages/llm" }
-cyrup_sugars = { path = "../../packages/cyrup-sugars", features = ["tokio-async", "hashbrown-json"] }
+cyrup_sugars = { path = "../../packages/cyrup-sugars", features = ["tokio-async", "array-tuples"] }
 sugars_macros = { path = "../../packages/macros" }
 
-# Required for JSON object syntax
+# Required for array tuple syntax
 hashbrown = { version = "0.15.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -22,5 +22,5 @@ serde_json = "1.0"
 tokio = { version = "1.0", features = ["full", "macros"] }
 
 [features]
-default = ["hashbrown-json"]
-hashbrown-json = ["sugars_collections/hashbrown-json", "sugars_builders/hashbrown-json"]
+default = ["array-tuples"]
+array-tuples = ["sugars_collections/array-tuples", "sugars_builders/array-tuples"]

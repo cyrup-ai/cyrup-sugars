@@ -44,8 +44,8 @@ cargo nextest run --no-default-features --features crossbeam-async
 # Serde support
 cargo nextest run --no-default-features --features collections,serde
 
-# Hashbrown JSON support
-cargo nextest run --no-default-features --features hashbrown-json
+# Array tuple support
+cargo nextest run --no-default-features --features array-tuples
 
 # Gix interop
 cargo nextest run --no-default-features --features gix-interop

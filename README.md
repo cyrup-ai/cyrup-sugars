@@ -13,25 +13,45 @@ Syntactic sugar utilities for Rust - collections, async patterns, and macros.
 - `collections` - Collection types: `ZeroOneOrMany`, `OneOrMany`, `ByteSize`
 - `async` - Async utilities: `AsyncTask` and `AsyncStream`
 - `macros` - Collection and async macros
-- `hashbrown-json` - JSON object syntax for collections
+- `array-tuples` - Array tuple syntax for collections
 - `gix-interop` - Git object hash tables
 
-### JSON Object Syntax
+### Array Tuple Syntax
 
-The `hashbrown-json` feature enables intuitive JSON-like syntax in builder patterns:
+The `array-tuples` feature enables intuitive array tuple syntax in builder patterns:
 
 ```rust
 let builder = FluentAi::agent_role("example")
-    .additional_params({"beta" => "true"})
-    .metadata({"key" => "val", "foo" => "bar"})
+    .additional_params([("beta", "true"), ("debug", "false")])
+    .metadata([("key", "val"), ("foo", "bar")])
     .tools((
-        Tool::<Perplexity>::new({"citations" => "true"}),
+        Tool::<Perplexity>::new([("citations", "true"), ("format", "json")]),
     ));
 ```
 
-The `{"key" => "value"}` syntax works seamlessly with the transformation system, providing a clean and intuitive API for developers.
+**Implementation Pattern:**
 
-📖 **For complete implementation details, see the [JSON Syntax Implementation Guide](./docs/JSON_SYNTAX.md)**
+```rust
+/// Set additional parameters with array tuple syntax
+pub fn additional_params<T>(mut self, params: T) -> Self 
+where
+    T: IntoHashMap
+{
+    let config_map = params.into_hashmap();
+    let mut map = HashMap::new();
+    for (k, v) in config_map {
+        map.insert(k.to_string(), Value::String(v.to_string()));
+    }
+    self.additional_params = Some(map);
+    self
+}
+```
+
+Usage: `.additional_params([("beta", "true"), ("debug", "false")])`
+
+The array tuple syntax `[("key", "value")]` works seamlessly with the `IntoHashMap` trait, providing a clean and intuitive API for developers.
+
+📖 **For complete implementation details, see the [Array Tuple Syntax Implementation Guide](./docs/ARRAY_TUPLE_SYNTAX.md)**
 
 ### AsyncTask Pattern
 
@@ -97,7 +117,7 @@ Or with specific features:
 
 ```toml
 [dependencies]
-cyrup_sugars = { version = "0.1", features = ["hashbrown-json"] }
+cyrup_sugars = { version = "0.1", features = ["array-tuples"] }
 ```
 
 ## Example
@@ -126,15 +146,15 @@ let stream = FluentAi::agent_role("rusty-squire")
     )
     .mcp_server<Stdio>::bin("/user/local/bin/sweetmcp").init("cargo run -- --stdio")
     .tools( // trait Tool
-        Tool<Perplexity>::new({
-            "citations" => "true"
-        }),
+        Tool<Perplexity>::new([
+            ("citations", "true"), ("format", "json")
+        ]),
         Tool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
     ) // ZeroOneOrMany `Tool` || `McpTool` || NamedTool (WASM)
 
-    .additional_params({"beta" =>  "true"})
+    .additional_params([("beta", "true"), ("debug", "false")])
     .memory(Library::named("obsidian_vault"))
-    .metadata({ "key" => "val", "foo" => "bar" })
+    .metadata([("key", "val"), ("foo", "bar")])
     .on_tool_result(|results| {
         // do stuff
     })
@@ -156,8 +176,8 @@ let stream = FluentAi::agent_role("rusty-squire")
 Run the examples to see the library in action:
 
 ```bash
-# JSON object syntax
-cd examples/json_syntax && cargo run
+# Array tuple syntax
+cd examples/array_tuple_syntax && cargo run
 
 # Async task pipeline
 cd examples/async_task_example && cargo run

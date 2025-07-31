@@ -15,11 +15,11 @@ path = "src/lib.rs"
 
 [features]
 default = ["tokio-async"]
-all = ["tokio-async", "std-async", "crossbeam-async", "hashbrown-json"]
+all = ["tokio-async", "std-async", "crossbeam-async", "array-tuples"]
 tokio-async = ["tokio", "futures", "parking_lot", "sugars_async_task/tokio", "sugars_async_stream/tokio-backend"]
 std-async = ["futures", "async-channel", "sugars_async_stream/std-backend"]
 crossbeam-async = ["crossbeam", "futures", "async-channel", "sugars_async_stream/crossbeam-backend"]
-hashbrown-json = ["sugars_collections/hashbrown-json"]
+array-tuples = ["sugars_collections/array-tuples"]
 
 [dependencies]
 sugars_collections = { path = "../collections" }

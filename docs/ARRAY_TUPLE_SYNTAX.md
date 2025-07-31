@@ -1,6 +1,6 @@
-# JSON Syntax Implementation Guide
+# Array Tuple Syntax Implementation Guide
 
-This guide provides a comprehensive, step-by-step approach to implementing JSON object syntax (`{"key" => "value"}`) in Rust builder patterns using the cyrup-sugars ecosystem.
+This guide provides a comprehensive, step-by-step approach to implementing array tuple syntax (`[("key", "value")]`) in Rust builder patterns using the cyrup-sugars ecosystem.
 
 ## Table of Contents
 
@@ -20,7 +20,7 @@ This guide provides a comprehensive, step-by-step approach to implementing JSON 
 *`Cargo.toml`*:
 
 ```toml
-cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", package = "cyrup_sugars", branch = "main", features = ["hashbrown-json"] }
+cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", package = "cyrup_sugars", branch = "main", features = ["array-tuples"] }
 ```
 
 **Other available guides:**
@@ -49,18 +49,63 @@ cyrup_sugars = { git = "https://github.com/cyrup-ai/cyrup-sugars", package = "cy
 
   📖 [ZeroOneOrMany Usage Guide](./ZERO_ONE_OR_MANY.md)
 
-The JSON syntax feature allows developers to write intuitive builder patterns like:
+The array tuple syntax feature allows developers to write intuitive builder patterns like:
 
 ```rust
 FluentAi::agent_role("researcher")
-    .additional_params({"beta" => "true"})
-    .metadata({"key" => "val", "foo" => "bar"})
+    .additional_params([("beta", "true"), ("debug", "false")])
+    .metadata([("key", "val"), ("foo", "bar")])
     .tools((
-        Tool::<Perplexity>::new({"citations" => "true"}),
+        Tool::<Perplexity>::new([("citations", "true"), ("format", "json")]),
     ))
 ```
 
-This syntax works automatically with the transformation system. The `{"key" => "value"}` syntax is transformed internally without exposing any macros to users.
+This syntax works automatically with Rust's built-in array and tuple syntax. The `[("key", "value")]` syntax uses standard Rust patterns and compiles directly to HashMap creation through the `IntoHashMap` trait.
+
+### Key Implementation Details
+
+**1. IntoHashMap Trait**
+```rust
+pub trait IntoHashMap {
+    fn into_hashmap(self) -> HashMap<&'static str, &'static str>;
+}
+
+// Implemented for arrays of tuples
+impl<const N: usize> IntoHashMap for [(&'static str, &'static str); N] {
+    fn into_hashmap(self) -> HashMap<&'static str, &'static str> {
+        self.into_iter().collect()
+    }
+}
+```
+
+**2. Builder Method Pattern**
+```rust
+/// Set additional parameters with array tuple syntax
+pub fn additional_params<T>(mut self, params: T) -> Self 
+where
+    T: IntoHashMap
+{
+    let config_map = params.into_hashmap();
+    let mut map = HashMap::new();
+    for (k, v) in config_map {
+        map.insert(k.to_string(), Value::String(v.to_string()));
+    }
+    self.additional_params = Some(map);
+    self
+}
+```
+
+**3. Usage Examples**
+```rust
+// Multiple pairs (recommended - more intuitive than single)
+.additional_params([("beta", "true"), ("debug", "false")])
+
+// Multiple pairs  
+.metadata([("key", "val"), ("foo", "bar"), ("version", "1.0")])
+
+// Tool constructor
+Tool::<Perplexity>::new([("citations", "true"), ("format", "json")])
+```
 
 ## Prerequisites
 
@@ -83,8 +128,8 @@ quote = "1.0"
 syn = { version = "2.0", features = ["full"] }
 
 [features]
-default = ["hashbrown-json"]
-hashbrown-json = []
+default = ["array-tuples"]
+array-tuples = []
 ```
 
 ### 1.2 Create Macro Crate Structure
@@ -136,7 +181,7 @@ use quote::quote;
 /// Creates a closure that returns a hashbrown HashMap from key-value pairs
 ///
 /// This macro transforms JSON-like syntax into valid Rust code:
-/// `{"key" => "value"}` syntax becomes a closure that creates a HashMap
+/// Array tuple syntax `[("key", "value")]` becomes a HashMap through From/Into traits
 #[proc_macro]
 pub fn json_transform(input: TokenStream) -> TokenStream {
     // Convert the input to a string and manually parse key => value pairs
@@ -197,12 +242,9 @@ pub fn enable_json_syntax(_attr: TokenStream, item: TokenStream) -> TokenStream 
 
 ### 3.1 Basic Builder Pattern
 
-Create your builder struct with the attribute:
+Create your builder struct:
 
 ```rust
-use sugars_macros::enable_json_syntax;
-
-#[enable_json_syntax]
 pub struct AgentRoleBuilder {
     additional_params: Option<HashMap<String, Value>>,
     metadata: Option<HashMap<String, Value>>,
@@ -210,18 +252,18 @@ pub struct AgentRoleBuilder {
 }
 ```
 
-### 3.2 Implement Builder Methods with Generic Parameters
+### 3.2 Implement Builder Methods with IntoHashMap Trait
 
-**Critical:** Use generic type parameters, not `impl Into<>` directly in the parameter:
+**Implementation Pattern:** Use the `IntoHashMap` trait for clean array tuple syntax:
 
 ```rust
 impl AgentRoleBuilder {
-    /// Set additional parameters with JSON object syntax
-    pub fn additional_params<P>(mut self, params: P) -> Self
+    /// Set additional parameters with array tuple syntax
+    pub fn additional_params<T>(mut self, params: T) -> Self 
     where
-        P: Into<hashbrown::HashMap<&'static str, &'static str>>
+        T: IntoHashMap
     {
-        let config_map = params.into();
+        let config_map = params.into_hashmap();
         let mut map = HashMap::new();
         for (k, v) in config_map {
             map.insert(k.to_string(), Value::String(v.to_string()));
@@ -230,12 +272,12 @@ impl AgentRoleBuilder {
         self
     }
 
-    /// Set metadata with JSON object syntax
-    pub fn metadata<P>(mut self, metadata: P) -> Self
+    /// Set metadata with array tuple syntax
+    pub fn metadata<T>(mut self, metadata: T) -> Self
     where
-        P: Into<hashbrown::HashMap<&'static str, &'static str>>
+        T: IntoHashMap
     {
-        let config_map = metadata.into();
+        let config_map = metadata.into_hashmap();
         let mut map = HashMap::new();
         for (k, v) in config_map {
             map.insert(k.to_string(), Value::String(v.to_string()));
@@ -246,18 +288,30 @@ impl AgentRoleBuilder {
 }
 ```
 
+**Usage:**
+```rust
+.additional_params([("beta", "true"), ("debug", "false")])
+.metadata([("key", "val"), ("version", "1.0")])
+```
+
 ### 3.3 Tool Constructor Example
 
 ```rust
 impl<T> Tool<T> {
-    pub fn new<P>(_params: P) -> Tool<T>
+    pub fn new<P>(params: P) -> Tool<T>
     where
-        P: Into<hashbrown::HashMap<&'static str, &'static str>>
+        P: IntoHashMap
     {
+        let config_map = params.into_hashmap();
         // Store params in a real implementation
         Tool(std::marker::PhantomData)
     }
 }
+```
+
+**Usage:**
+```rust
+Tool::<Perplexity>::new([("citations", "true"), ("format", "json")])
 ```
 
 ## Step 4: Add Extension Traits
@@ -328,10 +382,10 @@ use your_builder::*;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _agent = FluentAi::agent_role("test")
-        .additional_params({"beta" => "true"})
-        .metadata({"key" => "val", "foo" => "bar"})
+        .additional_params([("beta", "true")])
+        .metadata([("key", "val"), ("foo", "bar")])
         .tools((
-            Tool::<Perplexity>::new({"citations" => "true"}),
+            Tool::<Perplexity>::new([("citations", "true")]),
         ));
 
     Ok(())
@@ -368,13 +422,13 @@ where
 ❌ **Wrong:**
 
 ```rust
-.additional_params({"beta" => "true"})  // This won't compile
+.additional_params({"beta" => "true"})  // Old brace syntax doesn't work
 ```
 
 ✅ **Correct:**
 
 ```rust
-.additional_params({"beta" => "true"})
+.additional_params([("beta", "true")])  // Array tuple syntax works
 ```
 
 ### 3. Missing Feature Gates
@@ -391,13 +445,13 @@ hashbrown-json = []
 ❌ **Wrong:**
 
 ```rust
-{"key" => "value"}  // This works automatically
+{"key" => "value"}  // Old brace syntax doesn't work
 ```
 
 ✅ **Correct:**
 
 ```rust
-{"key" => "value"}  // This works automatically
+[("key", "value")]  // Array tuple syntax works
 ```
 
 ## Advanced Usage
@@ -530,7 +584,7 @@ impl Builder {
 
 // Usage
 let builder = Builder::new()
-    .params({"key" => "value", "foo" => "bar"});
+    .params([("key", "value"), ("foo", "bar")]);
 ```
 
-This guide provides a complete foundation for implementing JSON syntax in your Rust builder patterns. The `{"key" => "value"}` syntax works automatically with the transformation system - no macros need to be imported or called by users.
+This guide provides a complete foundation for implementing array tuple syntax in your Rust builder patterns. The `[("key", "value")]` syntax works automatically with Rust's standard library - no macros or special transformations are needed.

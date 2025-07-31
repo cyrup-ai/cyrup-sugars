@@ -1,6 +1,6 @@
 //! AI Agent Builder Example
 //!
-//! This example demonstrates the exact JSON object syntax shown in the
+//! This example demonstrates the exact array tuple syntax shown in the
 //! cyrup_sugars README.md file. All syntax works exactly as documented.
 
 use sugars_llm::*;
@@ -16,34 +16,31 @@ impl ExecToText for &str {
     }
 }
 
-
-
 fn process_turn() -> String {
     "Processed turn".to_string()
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-
     println!("🤖 AI Agent Builder Example");
-    println!("Demonstrating the exact JSON object syntax from README.md");
+    println!("Demonstrating the exact array tuple syntax from README.md");
     println!();
-    
-    // Test various JSON syntax patterns
+
+    // Test various array tuple syntax patterns
     println!("✅ Testing array syntax variations:");
-    
+
     // Single key-value pair
     let _test1 = Tool::<Perplexity>::new([("single", "value")]);
     println!("  - Single pair: Tool::new([('single', 'value')])");
-    
+
     // Multiple key-value pairs
     let _test2 = Tool::<Perplexity>::new([("key1", "val1"), ("key2", "val2")]);
     println!("  - Multiple pairs: Tool::new([('key1', 'val1'), ('key2', 'val2')])");
-    
+
     // Zero pairs (empty)
     let _test3 = Tool::<Perplexity>::new([]);
     println!("  - Empty array: Tool::new([])");
-    
+
     println!("✅ All syntax variations working correctly!");
 
     let _stream = FluentAi::agent_role("rusty-squire")
@@ -73,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Tool::named("cargo").bin("~/.cargo/bin").description("cargo --help".exec_to_text())
     )) // ZeroOneOrMany `Tool` || `McpTool` || NamedTool (WASM)
 
-    .additional_params([("beta", "true")])
+    .additional_params([("beta", "true"), ("foo", "bar")])
     .memory(Library::named("obsidian_vault"))
     .metadata([("key", "val"), ("foo", "bar")])
     .on_tool_result(|_results| {

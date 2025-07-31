@@ -5,20 +5,20 @@ use quote::quote;
 
 /// Attribute macro that automatically transforms JSON syntax in function bodies
 ///
-/// This macro finds patterns like `.method({"key" => "value"})` and transforms them
-/// to `.method(sugars_collections::hash_map!{"key" => "value"})` automatically.
+/// This macro finds patterns like `.method([("key", "value")])` and transforms them
+/// to work with array tuple syntax automatically.
 ///
 /// Usage:
-/// ```rust
-/// #[json_syntax]
+/// ```ignore
+/// #[array_tuple_syntax]  
 /// fn main() {
 ///     let builder = FluentAi::agent_role("example")
-///         .additional_params({"beta" => "true"})  // <- automatically transformed
-///         .metadata({"key" => "val"});            // <- automatically transformed
+///         .additional_params([("beta", "true")])  // <- array tuple syntax
+///         .metadata([("key", "val")]);            // <- array tuple syntax
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn json_syntax(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn array_tuple_syntax(_attr: TokenStream, item: TokenStream) -> TokenStream {
     // For now, just pass through the input unchanged
     // The transformation happens in the builder methods themselves
     item

@@ -4,21 +4,21 @@ This directory contains example implementations demonstrating the cyrup-sugars l
 
 ## Structure
 
-- `json_syntax/` - Demonstrates JSON object syntax in builder patterns
+- `array_tuple_syntax/` - Demonstrates array tuple syntax in builder patterns
 - `async_task_example/` - Shows AsyncTask usage with single and multiple receivers
 - `one_or_many_example/` - Shows OneOrMany usage for non-empty collections
 - `zero_one_or_many_example/` - Shows ZeroOneOrMany usage for flexible collections
 
 ## Running Examples
 
-### JSON Syntax Example
+### Array Tuple Syntax Example
 
 ```bash
-cd examples/json_syntax
+cd examples/array_tuple_syntax
 cargo run
 ```
 
-This demonstrates the `{"key" => "value"}` syntax working seamlessly with the transformation system.
+This demonstrates the `[("key", "value")]` syntax working seamlessly with builder patterns.
 
 ### AsyncTask Example
 
@@ -65,9 +65,9 @@ This shows:
 
 ## Features Demonstrated
 
-### JSON Object Syntax
-- Builder patterns with intuitive JSON-like syntax
-- Automatic transformation without exposing macros
+### Array Tuple Syntax
+- Builder patterns with intuitive array tuple syntax
+- Standard Rust syntax without transformations
 - Clean API for developers
 
 ### AsyncTask Patterns

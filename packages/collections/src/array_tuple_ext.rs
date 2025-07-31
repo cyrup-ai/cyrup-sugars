@@ -1,24 +1,24 @@
-//! Extension traits for JSON object syntax support with hashbrown
+//! Extension traits for array tuple syntax support with hashbrown
 //!
-//! This module provides extension traits that enable the clean JSON object syntax
-//! for collection types when the `hashbrown-json` feature is enabled.
+//! This module provides extension traits that enable the clean array tuple syntax
+//! for collection types when the `array-tuples` feature is enabled.
 
-#[cfg(feature = "hashbrown-json")]
+#[cfg(feature = "array-tuples")]
 use super::{
     one_or_many::{EmptyListError, OneOrMany},
     zero_one_or_many::ZeroOneOrMany,
 };
 
 /// Marker trait to exclude String types from generic implementations
-#[cfg(feature = "hashbrown-json")]
+#[cfg(feature = "array-tuples")]
 pub auto trait NotString {}
 
-#[cfg(feature = "hashbrown-json")]
+#[cfg(feature = "array-tuples")]
 impl !NotString for String {}
 
 /// Extension trait for types that can be constructed from hashbrown HashMap syntax - String,String case.
-#[cfg(feature = "hashbrown-json")]
-pub trait JsonObjectExtStringString: Sized {
+#[cfg(feature = "array-tuples")]
+pub trait ArrayTupleObjectExtStringString: Sized {
     /// The error type returned when construction fails.
     type Error;
 
@@ -29,7 +29,7 @@ pub trait JsonObjectExtStringString: Sized {
         V: Into<String>;
 
     /// Creates an instance from a closure that returns a hashbrown HashMap.
-    fn from_json<K, V, F>(f: F) -> Result<Self, Self::Error>
+    fn from_array_tuple<K, V, F>(f: F) -> Result<Self, Self::Error>
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
         K: Into<String>,
@@ -40,8 +40,8 @@ pub trait JsonObjectExtStringString: Sized {
 }
 
 /// Extension trait for types that can be constructed from hashbrown HashMap syntax - String,V case.
-#[cfg(feature = "hashbrown-json")]
-pub trait JsonObjectExtStringV<V1: NotString>: Sized {
+#[cfg(feature = "array-tuples")]
+pub trait ArrayTupleObjectExtStringV<V1: NotString>: Sized {
     /// The error type returned when construction fails.
     type Error;
 
@@ -52,7 +52,7 @@ pub trait JsonObjectExtStringV<V1: NotString>: Sized {
         V: Into<V1>;
 
     /// Creates an instance from a closure that returns a hashbrown HashMap.
-    fn from_json<K, V, F>(f: F) -> Result<Self, Self::Error>
+    fn from_array_tuple<K, V, F>(f: F) -> Result<Self, Self::Error>
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
         K: Into<String>,
@@ -63,8 +63,8 @@ pub trait JsonObjectExtStringV<V1: NotString>: Sized {
 }
 
 /// Extension trait for types that can be constructed from hashbrown HashMap syntax - K,String case.
-#[cfg(feature = "hashbrown-json")]
-pub trait JsonObjectExtKString<K1: NotString>: Sized {
+#[cfg(feature = "array-tuples")]
+pub trait ArrayTupleObjectExtKString<K1: NotString>: Sized {
     /// The error type returned when construction fails.
     type Error;
 
@@ -75,7 +75,7 @@ pub trait JsonObjectExtKString<K1: NotString>: Sized {
         V: Into<String>;
 
     /// Creates an instance from a closure that returns a hashbrown HashMap.
-    fn from_json<K, V, F>(f: F) -> Result<Self, Self::Error>
+    fn from_array_tuple<K, V, F>(f: F) -> Result<Self, Self::Error>
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
         K: Into<K1>,
@@ -86,8 +86,8 @@ pub trait JsonObjectExtKString<K1: NotString>: Sized {
 }
 
 /// Extension trait for types that can be constructed from hashbrown HashMap syntax - K,V case.
-#[cfg(feature = "hashbrown-json")]
-pub trait JsonObjectExtKV<K1: NotString, V1: NotString>: Sized {
+#[cfg(feature = "array-tuples")]
+pub trait ArrayTupleObjectExtKV<K1: NotString, V1: NotString>: Sized {
     /// The error type returned when construction fails.
     type Error;
 
@@ -98,7 +98,7 @@ pub trait JsonObjectExtKV<K1: NotString, V1: NotString>: Sized {
         V: Into<V1>;
 
     /// Creates an instance from a closure that returns a hashbrown HashMap.
-    fn from_json<K, V, F>(f: F) -> Result<Self, Self::Error>
+    fn from_array_tuple<K, V, F>(f: F) -> Result<Self, Self::Error>
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
         K: Into<K1>,
@@ -109,8 +109,8 @@ pub trait JsonObjectExtKV<K1: NotString, V1: NotString>: Sized {
 }
 
 /// Extension trait for Vec<(String, String)> to support JSON object syntax.
-#[cfg(feature = "hashbrown-json")]
-impl JsonObjectExtStringString for Vec<(String, String)> {
+#[cfg(feature = "array-tuples")]
+impl ArrayTupleObjectExtStringString for Vec<(String, String)> {
     type Error = std::convert::Infallible;
 
     fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error>
@@ -123,8 +123,8 @@ impl JsonObjectExtStringString for Vec<(String, String)> {
 }
 
 /// Extension trait for Vec<(String, V1)> to support JSON object syntax.
-#[cfg(feature = "hashbrown-json")]
-impl<V1: NotString> JsonObjectExtStringV<V1> for Vec<(String, V1)> {
+#[cfg(feature = "array-tuples")]
+impl<V1: NotString> ArrayTupleObjectExtStringV<V1> for Vec<(String, V1)> {
     type Error = std::convert::Infallible;
 
     fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error>
@@ -137,8 +137,8 @@ impl<V1: NotString> JsonObjectExtStringV<V1> for Vec<(String, V1)> {
 }
 
 /// Extension trait for Vec<(K1, String)> to support JSON object syntax.
-#[cfg(feature = "hashbrown-json")]
-impl<K1: NotString> JsonObjectExtKString<K1> for Vec<(K1, String)> {
+#[cfg(feature = "array-tuples")]
+impl<K1: NotString> ArrayTupleObjectExtKString<K1> for Vec<(K1, String)> {
     type Error = std::convert::Infallible;
 
     fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error>
@@ -151,8 +151,8 @@ impl<K1: NotString> JsonObjectExtKString<K1> for Vec<(K1, String)> {
 }
 
 /// Extension trait for Vec<(K1, V1)> to support JSON object syntax.
-#[cfg(feature = "hashbrown-json")]
-impl<K1: NotString, V1: NotString> JsonObjectExtKV<K1, V1> for Vec<(K1, V1)> {
+#[cfg(feature = "array-tuples")]
+impl<K1: NotString, V1: NotString> ArrayTupleObjectExtKV<K1, V1> for Vec<(K1, V1)> {
     type Error = std::convert::Infallible;
 
     fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error>
@@ -165,8 +165,8 @@ impl<K1: NotString, V1: NotString> JsonObjectExtKV<K1, V1> for Vec<(K1, V1)> {
 }
 
 /// Extension trait for Option<Vec<(String, String)>> to support JSON object syntax.
-#[cfg(feature = "hashbrown-json")]
-impl JsonObjectExtStringString for Option<Vec<(String, String)>> {
+#[cfg(feature = "array-tuples")]
+impl ArrayTupleObjectExtStringString for Option<Vec<(String, String)>> {
     type Error = std::convert::Infallible;
 
     fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error>
@@ -181,8 +181,8 @@ impl JsonObjectExtStringString for Option<Vec<(String, String)>> {
 }
 
 /// Extension trait for Option<Vec<(String, V1)>> to support JSON object syntax.
-#[cfg(feature = "hashbrown-json")]
-impl<V1: NotString> JsonObjectExtStringV<V1> for Option<Vec<(String, V1)>> {
+#[cfg(feature = "array-tuples")]
+impl<V1: NotString> ArrayTupleObjectExtStringV<V1> for Option<Vec<(String, V1)>> {
     type Error = std::convert::Infallible;
 
     fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error>
@@ -196,8 +196,8 @@ impl<V1: NotString> JsonObjectExtStringV<V1> for Option<Vec<(String, V1)>> {
 }
 
 /// Extension trait for Option<Vec<(K1, String)>> to support JSON object syntax.
-#[cfg(feature = "hashbrown-json")]
-impl<K1: NotString> JsonObjectExtKString<K1> for Option<Vec<(K1, String)>> {
+#[cfg(feature = "array-tuples")]
+impl<K1: NotString> ArrayTupleObjectExtKString<K1> for Option<Vec<(K1, String)>> {
     type Error = std::convert::Infallible;
 
     fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error>
@@ -211,8 +211,8 @@ impl<K1: NotString> JsonObjectExtKString<K1> for Option<Vec<(K1, String)>> {
 }
 
 /// Extension trait for Option<Vec<(K1, V1)>> to support JSON object syntax.
-#[cfg(feature = "hashbrown-json")]
-impl<K1: NotString, V1: NotString> JsonObjectExtKV<K1, V1> for Option<Vec<(K1, V1)>> {
+#[cfg(feature = "array-tuples")]
+impl<K1: NotString, V1: NotString> ArrayTupleObjectExtKV<K1, V1> for Option<Vec<(K1, V1)>> {
     type Error = std::convert::Infallible;
 
     fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> Result<Self, Self::Error>
@@ -226,8 +226,8 @@ impl<K1: NotString, V1: NotString> JsonObjectExtKV<K1, V1> for Option<Vec<(K1, V
 }
 
 /// Extension methods for creating collections from JSON object syntax - String,String case.
-#[cfg(feature = "hashbrown-json")]
-pub trait CollectionJsonExtStringString {
+#[cfg(feature = "array-tuples")]
+pub trait CollectionArrayTupleExtStringString {
     /// Creates a collection from a closure that returns a hashbrown HashMap.
     fn json<K, V, F>(f: F) -> Self
     where
@@ -237,8 +237,8 @@ pub trait CollectionJsonExtStringString {
 }
 
 /// Extension methods for creating collections from JSON object syntax - String,V case.
-#[cfg(feature = "hashbrown-json")]
-pub trait CollectionJsonExtStringV<V1: NotString> {
+#[cfg(feature = "array-tuples")]
+pub trait CollectionArrayTupleExtStringV<V1: NotString> {
     /// Creates a collection from a closure that returns a hashbrown HashMap.
     fn json<K, V, F>(f: F) -> Self
     where
@@ -248,8 +248,8 @@ pub trait CollectionJsonExtStringV<V1: NotString> {
 }
 
 /// Extension methods for creating collections from JSON object syntax - K,String case.
-#[cfg(feature = "hashbrown-json")]
-pub trait CollectionJsonExtKString<K1: NotString> {
+#[cfg(feature = "array-tuples")]
+pub trait CollectionArrayTupleExtKString<K1: NotString> {
     /// Creates a collection from a closure that returns a hashbrown HashMap.
     fn json<K, V, F>(f: F) -> Self
     where
@@ -259,8 +259,8 @@ pub trait CollectionJsonExtKString<K1: NotString> {
 }
 
 /// Extension methods for creating collections from JSON object syntax - K,V case.
-#[cfg(feature = "hashbrown-json")]
-pub trait CollectionJsonExtKV<K1: NotString, V1: NotString> {
+#[cfg(feature = "array-tuples")]
+pub trait CollectionArrayTupleExtKV<K1: NotString, V1: NotString> {
     /// Creates a collection from a closure that returns a hashbrown HashMap.
     fn json<K, V, F>(f: F) -> Self
     where
@@ -270,8 +270,8 @@ pub trait CollectionJsonExtKV<K1: NotString, V1: NotString> {
 }
 
 /// Extension methods for creating collections that may fail from JSON object syntax - String,String case.
-#[cfg(feature = "hashbrown-json")]
-pub trait TryCollectionJsonExtStringString {
+#[cfg(feature = "array-tuples")]
+pub trait TryCollectionArrayTupleExtStringString {
     /// The error type returned when construction fails.
     type Error;
 
@@ -285,8 +285,8 @@ pub trait TryCollectionJsonExtStringString {
 }
 
 /// Extension methods for creating collections that may fail from JSON object syntax - String,V case.
-#[cfg(feature = "hashbrown-json")]
-pub trait TryCollectionJsonExtStringV<V1: NotString> {
+#[cfg(feature = "array-tuples")]
+pub trait TryCollectionArrayTupleExtStringV<V1: NotString> {
     /// The error type returned when construction fails.
     type Error;
 
@@ -300,8 +300,8 @@ pub trait TryCollectionJsonExtStringV<V1: NotString> {
 }
 
 /// Extension methods for creating collections that may fail from JSON object syntax - K,String case.
-#[cfg(feature = "hashbrown-json")]
-pub trait TryCollectionJsonExtKString<K1: NotString> {
+#[cfg(feature = "array-tuples")]
+pub trait TryCollectionArrayTupleExtKString<K1: NotString> {
     /// The error type returned when construction fails.
     type Error;
 
@@ -315,8 +315,8 @@ pub trait TryCollectionJsonExtKString<K1: NotString> {
 }
 
 /// Extension methods for creating collections that may fail from JSON object syntax - K,V case.
-#[cfg(feature = "hashbrown-json")]
-pub trait TryCollectionJsonExtKV<K1: NotString, V1: NotString> {
+#[cfg(feature = "array-tuples")]
+pub trait TryCollectionArrayTupleExtKV<K1: NotString, V1: NotString> {
     /// The error type returned when construction fails.
     type Error;
 
@@ -329,8 +329,8 @@ pub trait TryCollectionJsonExtKV<K1: NotString, V1: NotString> {
         Self: Sized;
 }
 
-#[cfg(feature = "hashbrown-json")]
-impl TryCollectionJsonExtStringString for OneOrMany<(String, String)> {
+#[cfg(feature = "array-tuples")]
+impl TryCollectionArrayTupleExtStringString for OneOrMany<(String, String)> {
     type Error = EmptyListError;
 
     fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
@@ -346,8 +346,8 @@ impl TryCollectionJsonExtStringString for OneOrMany<(String, String)> {
     }
 }
 
-#[cfg(feature = "hashbrown-json")]
-impl<V1> TryCollectionJsonExtStringV<V1> for OneOrMany<(String, V1)>
+#[cfg(feature = "array-tuples")]
+impl<V1> TryCollectionArrayTupleExtStringV<V1> for OneOrMany<(String, V1)>
 where
     V1: NotString,
 {
@@ -365,8 +365,8 @@ where
     }
 }
 
-#[cfg(feature = "hashbrown-json")]
-impl<K1> TryCollectionJsonExtKString<K1> for OneOrMany<(K1, String)>
+#[cfg(feature = "array-tuples")]
+impl<K1> TryCollectionArrayTupleExtKString<K1> for OneOrMany<(K1, String)>
 where
     K1: NotString,
 {
@@ -384,8 +384,8 @@ where
     }
 }
 
-#[cfg(feature = "hashbrown-json")]
-impl<K1, V1> TryCollectionJsonExtKV<K1, V1> for OneOrMany<(K1, V1)>
+#[cfg(feature = "array-tuples")]
+impl<K1, V1> TryCollectionArrayTupleExtKV<K1, V1> for OneOrMany<(K1, V1)>
 where
     K1: NotString,
     V1: NotString,
@@ -404,8 +404,8 @@ where
     }
 }
 
-#[cfg(feature = "hashbrown-json")]
-impl CollectionJsonExtStringString for Vec<(String, String)> {
+#[cfg(feature = "array-tuples")]
+impl CollectionArrayTupleExtStringString for Vec<(String, String)> {
     fn json<K, V, F>(f: F) -> Self
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
@@ -416,8 +416,8 @@ impl CollectionJsonExtStringString for Vec<(String, String)> {
     }
 }
 
-#[cfg(feature = "hashbrown-json")]
-impl<V1> CollectionJsonExtStringV<V1> for Vec<(String, V1)>
+#[cfg(feature = "array-tuples")]
+impl<V1> CollectionArrayTupleExtStringV<V1> for Vec<(String, V1)>
 where
     V1: NotString,
 {
@@ -431,8 +431,8 @@ where
     }
 }
 
-#[cfg(feature = "hashbrown-json")]
-impl<K1> CollectionJsonExtKString<K1> for Vec<(K1, String)>
+#[cfg(feature = "array-tuples")]
+impl<K1> CollectionArrayTupleExtKString<K1> for Vec<(K1, String)>
 where
     K1: NotString,
 {
@@ -446,8 +446,8 @@ where
     }
 }
 
-#[cfg(feature = "hashbrown-json")]
-impl<K1, V1> CollectionJsonExtKV<K1, V1> for Vec<(K1, V1)>
+#[cfg(feature = "array-tuples")]
+impl<K1, V1> CollectionArrayTupleExtKV<K1, V1> for Vec<(K1, V1)>
 where
     K1: NotString,
     V1: NotString,
@@ -463,8 +463,8 @@ where
 }
 
 // ZeroOneOrMany implementations
-#[cfg(feature = "hashbrown-json")]
-impl CollectionJsonExtStringString for ZeroOneOrMany<(String, String)> {
+#[cfg(feature = "array-tuples")]
+impl CollectionArrayTupleExtStringString for ZeroOneOrMany<(String, String)> {
     fn json<K, V, F>(f: F) -> Self
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
@@ -478,8 +478,8 @@ impl CollectionJsonExtStringString for ZeroOneOrMany<(String, String)> {
     }
 }
 
-#[cfg(feature = "hashbrown-json")]
-impl<V1> CollectionJsonExtStringV<V1> for ZeroOneOrMany<(String, V1)>
+#[cfg(feature = "array-tuples")]
+impl<V1> CollectionArrayTupleExtStringV<V1> for ZeroOneOrMany<(String, V1)>
 where
     V1: NotString,
 {
@@ -495,8 +495,8 @@ where
     }
 }
 
-#[cfg(feature = "hashbrown-json")]
-impl<K1> CollectionJsonExtKString<K1> for ZeroOneOrMany<(K1, String)>
+#[cfg(feature = "array-tuples")]
+impl<K1> CollectionArrayTupleExtKString<K1> for ZeroOneOrMany<(K1, String)>
 where
     K1: NotString,
 {
@@ -512,8 +512,8 @@ where
     }
 }
 
-#[cfg(feature = "hashbrown-json")]
-impl<K1, V1> CollectionJsonExtKV<K1, V1> for ZeroOneOrMany<(K1, V1)>
+#[cfg(feature = "array-tuples")]
+impl<K1, V1> CollectionArrayTupleExtKV<K1, V1> for ZeroOneOrMany<(K1, V1)>
 where
     K1: NotString,
     V1: NotString,
@@ -530,9 +530,9 @@ where
     }
 }
 
-// ZeroOneOrMany TryCollectionJsonExt implementations
-#[cfg(feature = "hashbrown-json")]
-impl TryCollectionJsonExtStringString for ZeroOneOrMany<(String, String)> {
+// ZeroOneOrMany TryCollectionArrayTupleExt implementations
+#[cfg(feature = "array-tuples")]
+impl TryCollectionArrayTupleExtStringString for ZeroOneOrMany<(String, String)> {
     type Error = std::convert::Infallible;
 
     fn try_json<K, V, F>(f: F) -> Result<Self, Self::Error>
@@ -548,8 +548,8 @@ impl TryCollectionJsonExtStringString for ZeroOneOrMany<(String, String)> {
     }
 }
 
-#[cfg(feature = "hashbrown-json")]
-impl<V1> TryCollectionJsonExtStringV<V1> for ZeroOneOrMany<(String, V1)>
+#[cfg(feature = "array-tuples")]
+impl<V1> TryCollectionArrayTupleExtStringV<V1> for ZeroOneOrMany<(String, V1)>
 where
     V1: NotString,
 {
@@ -567,8 +567,8 @@ where
     }
 }
 
-#[cfg(feature = "hashbrown-json")]
-impl<K1> TryCollectionJsonExtKString<K1> for ZeroOneOrMany<(K1, String)>
+#[cfg(feature = "array-tuples")]
+impl<K1> TryCollectionArrayTupleExtKString<K1> for ZeroOneOrMany<(K1, String)>
 where
     K1: NotString,
 {
@@ -586,8 +586,8 @@ where
     }
 }
 
-#[cfg(feature = "hashbrown-json")]
-impl<K1, V1> TryCollectionJsonExtKV<K1, V1> for ZeroOneOrMany<(K1, V1)>
+#[cfg(feature = "array-tuples")]
+impl<K1, V1> TryCollectionArrayTupleExtKV<K1, V1> for ZeroOneOrMany<(K1, V1)>
 where
     K1: NotString,
     V1: NotString,

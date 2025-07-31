@@ -12,12 +12,12 @@ categories = ["development-tools", "asynchronous"]
 
 [dependencies]
 # Core async primitives from workspace
-cyrup_sugars = { path = "../cyrup-sugars", features = ["tokio-async", "hashbrown-json"] }
+cyrup_sugars = { path = "../cyrup-sugars", features = ["tokio-async", "array-tuples"] }
 
-# Macros for JSON object syntax
+# Macros for array tuple syntax
 sugars_macros = { path = "../macros" }
 
-# Collections for JSON syntax support
+# Collections for array tuple syntax support
 sugars_collections = { path = "../collections" }
 
 # Async runtime and utilities
@@ -57,12 +57,12 @@ ndarray = "0.15"
 glob = "0.3"
 
 [features]
-default = ["tokio-async", "hashbrown-json"]
+default = ["tokio-async", "array-tuples"]
 tokio-async = ["cyrup_sugars/tokio-async"]
 std-async = ["cyrup_sugars/std-async"]
 crossbeam-async = ["cyrup_sugars/crossbeam-async"]
-hashbrown-json = ["cyrup_sugars/hashbrown-json"]
-full = ["tokio-async", "hashbrown-json"]
+array-tuples = ["cyrup_sugars/array-tuples"]
+full = ["tokio-async", "array-tuples"]
 
 [dev-dependencies]
 tokio-test = "0.4"

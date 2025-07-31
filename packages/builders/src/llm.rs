@@ -1,12 +1,12 @@
-//! AI Agent Builder implementations using cyrup_sugars JSON object syntax
+//! AI Agent Builder implementations using cyrup_sugars array tuple syntax
 //!
 //! This module implements the exact syntax shown in the README.md file,
-//! demonstrating clean JSON-like configuration without exposing macros.
+//! demonstrating clean array tuple configuration without exposing macros.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap as StdHashMap;
 
-/// Client builder that supports JSON object syntax
+/// Client builder that supports array tuple syntax
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Client {
     headers: StdHashMap<String, String>,
@@ -22,8 +22,8 @@ impl Client {
         }
     }
 
-    /// Set headers using JSON object syntax
-    #[cfg(feature = "hashbrown-json")]
+    /// Set headers using array tuple syntax
+    #[cfg(feature = "array-tuples")]
     pub fn with_headers<F>(mut self, f: F) -> Self
     where
         F: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>,
@@ -36,7 +36,7 @@ impl Client {
     }
 
     /// Set options using JSON object syntax  
-    #[cfg(feature = "hashbrown-json")]
+    #[cfg(feature = "array-tuples")]
     pub fn with_options<F>(mut self, f: F) -> Self
     where
         F: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>,
@@ -67,7 +67,7 @@ pub struct Database {
 
 impl Database {
     /// Connect to database using JSON object syntax
-    #[cfg(feature = "hashbrown-json")]
+    #[cfg(feature = "array-tuples")]
     pub fn connect<F>(f: F) -> Self
     where
         F: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>,
@@ -108,7 +108,7 @@ impl ApiClient {
     }
 
     /// Set authentication using JSON object syntax
-    #[cfg(feature = "hashbrown-json")]
+    #[cfg(feature = "array-tuples")]
     pub fn auth<F>(mut self, f: F) -> Self
     where
         F: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>,
@@ -123,7 +123,7 @@ impl ApiClient {
     }
 
     /// Set rate limiting using JSON object syntax
-    #[cfg(feature = "hashbrown-json")]
+    #[cfg(feature = "array-tuples")]
     pub fn rate_limit<F>(mut self, f: F) -> Self
     where
         F: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>,

@@ -41,7 +41,8 @@ use std::marker::PhantomData;
 ///
 /// ### Examples
 /// ```rust
-/// let empty = ZeroOneOrMany::none();
+/// use sugars_collections::ZeroOneOrMany;
+/// let empty: ZeroOneOrMany<i32> = ZeroOneOrMany::none();
 /// let single = ZeroOneOrMany::one(42);
 /// let multiple = ZeroOneOrMany::many(vec![1, 2, 3]);
 /// let pushed = single.with_pushed(43);
@@ -87,16 +88,12 @@ impl<T> ZeroOneOrMany<T> {
     ///
     /// # Example
     /// ```rust
-    /// # /// # {
-    /// use cyrup_sugars::collections::ZeroOneOrMany;
+    /// use sugars_collections::ZeroOneOrMany;
     /// use hashbrown::HashMap;
-    ///
-    /// let map = hashbrown::hash_map! {
-    ///     "key1" => "value1",
-    ///     "key2" => "value2",
-    /// };
-    /// let collection: ZeroOneOrMany<(&str, &str)> = ZeroOneOrMany::from_hashmap(map);
-    /// # }
+    /// let mut map = hashbrown::HashMap::new();
+    /// map.insert("key1", "value1");
+    /// map.insert("key2", "value2");
+    /// let collection: ZeroOneOrMany<(&str, &str)> = ZeroOneOrMany::<(&str, &str)>::from_hashmap(map);
     /// ```
     #[inline]
     pub fn from_hashmap<K, V>(map: ::hashbrown::HashMap<K, V>) -> ZeroOneOrMany<(K, V)> {
@@ -110,19 +107,16 @@ impl<T> ZeroOneOrMany<T> {
     /// This method is designed to work with the hashbrown macros.
     ///
     /// # Example
-    /// ```rust
-    /// # /// # {
-    /// use cyrup_sugars::collections::ZeroOneOrMany;
-    /// use cyrup_sugars::macros::hashbrown::hash_map_fn;
-    ///
-    /// let collection: ZeroOneOrMany<(&str, &str)> = ZeroOneOrMany::from_json(hash_map_fn! {
-    ///     "beta" => "true",
-    ///     "version" => "2.1.0",
-    /// });
-    /// # }
+    /// ```ignore
+    /// use sugars_collections::ZeroOneOrMany;
+    /// use sugars_macros::hash_map_fn;
+    /// let collection: ZeroOneOrMany<(&str, &str)> = ZeroOneOrMany::from_array_tuple(hash_map_fn! [
+    ///     ("beta", "true"),
+    ///     ("version", "2.1.0"),
+    /// ]);
     /// ```
     #[inline]
-    pub fn from_json<K, V, F>(f: F) -> ZeroOneOrMany<(K, V)>
+    pub fn from_array_tuple<K, V, F>(f: F) -> ZeroOneOrMany<(K, V)>
     where
         F: FnOnce() -> ::hashbrown::HashMap<K, V>,
     {
