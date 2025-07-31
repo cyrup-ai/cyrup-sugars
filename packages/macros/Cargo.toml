@@ -18,7 +18,7 @@ proc-macro = true
 
 [dependencies]
 hashbrown = { version = "0.15.4", features = ["serde"] }
-workspace-hack = { version = "0.1", path = "../../workspace-hack" }
+workspace-hack = { version = "0.2.0", path = "../../workspace-hack" }
 syn = { version = "2.0", features = ["full", "extra-traits"] }
 quote = "1.0"
 proc-macro2 = "1.0"

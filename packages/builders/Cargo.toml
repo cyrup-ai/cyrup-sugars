@@ -22,7 +22,7 @@ sugars_macros = { path = "../macros" }
 hashbrown = "0.15.4"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = { version = "1.0.140" }
-workspace-hack = { version = "0.1", path = "../../workspace-hack" }
+workspace-hack = { version = "0.2.0", path = "../../workspace-hack" }
 
 [features]
 default = []
