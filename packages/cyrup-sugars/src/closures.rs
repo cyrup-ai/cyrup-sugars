@@ -28,6 +28,33 @@ macro_rules! on_chunk {
             Err($err) => $err_expr
         }
     };
+    (|$chunk:ident| {
+        Ok => $ok_block:block,
+        Err($err:ident) => $err_expr:expr
+    }) => {
+        |$chunk| match $chunk {
+            Ok($chunk) => $ok_block,
+            Err($err) => $err_expr
+        }
+    };
+    (|$chunk:ident| {
+        Ok => $ok_expr:expr,
+        Err($err:ident) => $err_block:block
+    }) => {
+        |$chunk| match $chunk {
+            Ok($chunk) => $ok_expr,
+            Err($err) => $err_block
+        }
+    };
+    (|$chunk:ident| {
+        Ok => $ok_block:block,
+        Err($err:ident) => $err_block:block
+    }) => {
+        |$chunk| match $chunk {
+            Ok($chunk) => $ok_block,
+            Err($err) => $err_block
+        }
+    };
 }
 
 /// Creates a closure that handles errors with the provided expression.

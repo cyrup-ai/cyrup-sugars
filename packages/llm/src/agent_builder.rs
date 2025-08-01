@@ -46,24 +46,6 @@ impl IntoHashMap for Vec<(&'static str, &'static str)> {
 // Re-export the hash_map macro for internal use
 pub use sugars_collections::hash_map;
 
-/// Internal macro that enables array tuple syntax in builder methods
-/// This transforms [("key", "value")] syntax to work transparently
-macro_rules! array_tuple_method_impl {
-    ($method_name:ident, $field_name:ident) => {
-        pub fn $method_name<P>(mut self, params: P) -> Self
-        where
-            P: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>
-        {
-            let config_map = params();
-            let mut map = HashMap::new();
-            for (k, v) in config_map {
-                map.insert(k.to_string(), Value::String(v.to_string()));
-            }
-            self.$field_name = Some(map);
-            self
-        }
-    };
-}
 
 
 /// Wrapper type for JSON syntax closures
@@ -358,14 +340,26 @@ impl AgentRoleBuilder {
         self
     }
 
-    /// Handle chunks - must precede .chat() - accepts cyrup_sugars on_chunk macro
-    pub fn on_chunk<F>(self, _handler: F) -> AgentRoleBuilderWithChunkHandler<F>
+    /// Handle streaming chunks with clean syntax
+    pub fn on_chunk<F>(self, handler: F) -> AgentRoleBuilderWithChunkHandler<F>
+    where
+        F: Fn(Result<MessageChunk, String>) -> MessageChunk + Send + Sync + 'static,
+    {
+        self.on_chunk_impl(handler)
+    }
+
+}
+
+// Internal implementation that accepts processed closures
+impl AgentRoleBuilder {
+    /// Internal method that accepts closure from cyrup_sugars macro
+    pub fn on_chunk_impl<F>(self, handler: F) -> AgentRoleBuilderWithChunkHandler<F>
     where
         F: Fn(Result<MessageChunk, String>) -> MessageChunk + Send + Sync + 'static,
     {
         AgentRoleBuilderWithChunkHandler {
             inner: self,
-            chunk_handler: _handler,
+            chunk_handler: handler,
         }
     }
 }
@@ -436,6 +430,10 @@ impl Agent {
 pub fn exec_to_text() -> String {
     "Command help text".to_string()
 }
+
+
+
+
 
 // Re-export everything needed
 pub use crate::models::*;

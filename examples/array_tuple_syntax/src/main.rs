@@ -82,15 +82,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // your custom logic - return a processed message
         process_turn()
     })
-    .on_chunk(on_chunk!(|chunk| {  // elegant cyrup_sugars macro pattern
-        Ok => {                      // `.chat()` returns AsyncStream<MessageChunk> vs. AsyncStream<Result<MessageChunk>>
-            println!("{}", chunk);   // stream response here or from the AsyncStream .chat() returns  
-            chunk                    // Return unwrapped type T directly
+    .on_chunk(on_chunk!(|chunk| {
+        Ok => {
+            println!("{}", chunk);
+            chunk.into()
         },
         Err(bad_chunk) => MessageChunk {
             content: format!("Error: {}", bad_chunk),
             role: MessageRole::System
-        }  // Convert error to MessageChunk of type T
+        }
     }))
     .into_agent() // Agent Now
     .conversation_history(MessageRole::User, "What time is it in Paris, France")
