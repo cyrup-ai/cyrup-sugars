@@ -52,6 +52,9 @@
 #![warn(rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
+/// Closure macros for elegant stream processing with zero-allocation pattern matching
+pub mod closures;
+
 // Re-export modules from workspace packages
 pub use sugars_collections as collections;
 
@@ -107,4 +110,7 @@ pub mod prelude {
 
     // Re-export async utilities
     pub use crate::r#async::{FutureExt, NotResult, StreamExt};
+
+    // Re-export macros for elegant stream processing (from local closures module)
+    pub use crate::{on_chunk, on_result};
 }

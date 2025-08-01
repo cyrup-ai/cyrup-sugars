@@ -219,8 +219,8 @@ pub enum MessageRole {
 /// Message chunk for real-time streaming communication
 #[derive(Debug, Clone)]
 pub struct MessageChunk {
-    content: String,
-    role: MessageRole,
+    pub content: String,
+    pub role: MessageRole,
 }
 
 impl std::fmt::Display for MessageChunk {
@@ -358,10 +358,10 @@ impl AgentRoleBuilder {
         self
     }
 
-    /// Handle chunks - must precede .chat()
+    /// Handle chunks - must precede .chat() - accepts cyrup_sugars on_chunk macro
     pub fn on_chunk<F>(self, _handler: F) -> AgentRoleBuilderWithChunkHandler<F>
     where
-        F: Fn(Result<MessageChunk, String>) -> Result<MessageChunk, String> + Send + Sync + 'static,
+        F: Fn(Result<MessageChunk, String>) -> MessageChunk + Send + Sync + 'static,
     {
         AgentRoleBuilderWithChunkHandler {
             inner: self,
@@ -396,7 +396,7 @@ pub struct AgentRoleBuilderWithChunkHandler<F> {
 
 impl<F> AgentRoleBuilderWithChunkHandler<F>
 where
-    F: Fn(Result<MessageChunk, String>) -> Result<MessageChunk, String> + Send + Sync + 'static,
+    F: Fn(Result<MessageChunk, String>) -> MessageChunk + Send + Sync + 'static,
 {
     pub fn into_agent(self) -> Agent {
         Agent {

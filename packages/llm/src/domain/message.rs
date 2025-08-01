@@ -84,7 +84,10 @@ pub trait Conversation {
 pub trait Content: Serialize {
     /// Convert content to JSON string representation
     fn to_content_string(&self) -> String {
-        serde_json::to_string(self).unwrap()
+        serde_json::to_string(self).unwrap_or_else(|e| {
+            log::error!("Failed to serialize message content: {}", e);
+            "{}".to_string()
+        })
     }
 }
 

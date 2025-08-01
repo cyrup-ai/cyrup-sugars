@@ -245,7 +245,10 @@ where
         let memory_content = serde_json::json!({
             "input": input,
             "output": output,
-            "timestamp": std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
+            "timestamp": std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or(0),
         }).to_string();
         
         let memory = MemoryNode::new(memory_content, MemoryType::Episodic)

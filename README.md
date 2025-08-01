@@ -163,8 +163,11 @@ let stream = FluentAi::agent_role("rusty-squire")
         agent.chat(process_turn()) // your custom logic
     })
     .on_chunk(|chunk| {          // unwrap chunk closure :: NOTE: THIS MUST PRECEDE .chat()
-        Ok => chunk.into()       // `.chat()` returns AsyncStream<MessageChunk> vs. AsyncStream<Result<MessageChunk>>
-        println!("{}", chunk);   // stream response here or from the AsyncStream .chat() returns
+        Ok => {                  // `.chat()` returns AsyncStream<MessageChunk> vs. AsyncStream<Result<MessageChunk>>
+            println!("{}", chunk);   // stream response here or from the AsyncStream .chat() returns
+            chunk.into()
+        },
+        Err(bad_chunk) => bad_chunk.into()  // E: Into<T> - convert error to success type T
     })
     .into_agent() // Agent Now
     .conversation_history(MessageRole::User => "What time is it in Paris, France",
@@ -173,10 +176,40 @@ let stream = FluentAi::agent_role("rusty-squire")
     .chat("Hello")? // AsyncStream<MessageChunk
     .collect();
 
-Run the examples to see the library in action:
+## Working Examples
+
+### Complete on_chunk Usage
+
+```rust
+use cyrup_sugars::prelude::*;
+use sugars_llm::*;
+
+// Elegant pattern matching with cyrup_sugars on_chunk macro
+let stream = FluentAi::agent_role("assistant")
+    .completion_provider(Mistral::MAGISTRAL_SMALL)
+    .on_chunk(on_chunk!(|chunk| {  // Zero-allocation pattern matching
+        Ok => {                     // Handle successful chunks
+            println!("{}", chunk);  // Process chunk data
+            chunk.into()           // Convert good chunk to T
+        },
+        Err(bad_chunk) => BadChunk::from_err(bad_chunk)  // Convert error to BadChunk of type T
+    }))
+    .chat("Hello")?; // AsyncStream<MessageChunk>
+```
+
+### Array Tuple Syntax
+
+```rust
+// All these patterns work with array tuple syntax:
+Tool::<Perplexity>::new([("citations", "true")])
+    .additional_params([("beta", "true"), ("debug", "false")])
+    .metadata([("key", "val"), ("foo", "bar")])
+```
+
+### Run Examples
 
 ```bash
-# Array tuple syntax
+# Array tuple syntax with on_chunk macro
 cd examples/array_tuple_syntax && cargo run
 
 # Async task pipeline

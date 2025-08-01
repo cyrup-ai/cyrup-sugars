@@ -1,9 +1,10 @@
 //! AI Agent Builder Example
 //!
 //! This example demonstrates the exact array tuple syntax shown in the
-//! cyrup_sugars README.md file. All syntax works exactly as documented.
+//! cyrup_sugars README.md file including the elegant on_chunk macro.
 
 use sugars_llm::*;
+use cyrup_sugars::prelude::*;
 
 // Helper trait for the example
 trait ExecToText {
@@ -81,15 +82,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // your custom logic - return a processed message
         process_turn()
     })
-    .on_chunk(|chunk| {          // unwrap chunk closure :: NOTE: THIS MUST PRECEDE .chat()
-        match chunk {            // `.chat()` returns AsyncStream<MessageChunk> vs. AsyncStream<Result<MessageChunk>>
-            Ok(chunk) => {
-                println!("{}", chunk);   // stream response here or from the AsyncStream .chat() returns
-                Ok(chunk)
-            },
-            Err(e) => Err(e)
-        }
-    })
+    .on_chunk(on_chunk!(|chunk| {  // elegant cyrup_sugars macro pattern
+        Ok => {                      // `.chat()` returns AsyncStream<MessageChunk> vs. AsyncStream<Result<MessageChunk>>
+            println!("{}", chunk);   // stream response here or from the AsyncStream .chat() returns  
+            chunk                    // Return unwrapped type T directly
+        },
+        Err(bad_chunk) => MessageChunk {
+            content: format!("Error: {}", bad_chunk),
+            role: MessageRole::System
+        }  // Convert error to MessageChunk of type T
+    }))
     .into_agent() // Agent Now
     .conversation_history(MessageRole::User, "What time is it in Paris, France")
     .conversation_history(MessageRole::System, "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45")

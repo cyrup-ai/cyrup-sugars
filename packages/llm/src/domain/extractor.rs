@@ -79,7 +79,10 @@ impl<T: DeserializeOwned + Send + 'static + crate::async_task::NotResult, M: Com
                 .map(|chunk| chunk.text)
                 .collect::<String>();
             // Parse JSON response into T
-            serde_json::from_str::<T>(&response).unwrap()
+            serde_json::from_str::<T>(&response).map_err(|e| {
+                log::error!("Failed to parse JSON response: {}", e);
+                e
+            })?
         })
     }
     

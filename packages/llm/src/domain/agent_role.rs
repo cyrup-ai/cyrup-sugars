@@ -393,7 +393,15 @@ where
                 list.push(Box::new(self.0));
                 list.push(Box::new(self.1));
             }
-            None => *contexts = Some(ZeroOneOrMany::many(vec![Box::new(self.0), Box::new(self.1)]).unwrap()),
+            None => {
+                match ZeroOneOrMany::many(vec![Box::new(self.0), Box::new(self.1)]) {
+                    Ok(ctx) => *contexts = Some(ctx),
+                    Err(_) => {
+                        log::error!("Failed to create context list for 2-tuple");
+                        *contexts = Some(ZeroOneOrMany::none());
+                    }
+                }
+            }
         }
     }
 }
@@ -411,7 +419,15 @@ where
                 list.push(Box::new(self.1));
                 list.push(Box::new(self.2));
             }
-            None => *contexts = Some(ZeroOneOrMany::many(vec![Box::new(self.0), Box::new(self.1), Box::new(self.2)]).unwrap()),
+            None => {
+                match ZeroOneOrMany::many(vec![Box::new(self.0), Box::new(self.1), Box::new(self.2)]) {
+                    Ok(ctx) => *contexts = Some(ctx),
+                    Err(_) => {
+                        log::error!("Failed to create context list for 3-tuple");
+                        *contexts = Some(ZeroOneOrMany::none());
+                    }
+                }
+            }
         }
     }
 }
@@ -431,7 +447,15 @@ where
                 list.push(Box::new(self.2));
                 list.push(Box::new(self.3));
             }
-            None => *contexts = Some(ZeroOneOrMany::many(vec![Box::new(self.0), Box::new(self.1), Box::new(self.2), Box::new(self.3)]).unwrap()),
+            None => {
+                match ZeroOneOrMany::many(vec![Box::new(self.0), Box::new(self.1), Box::new(self.2), Box::new(self.3)]) {
+                    Ok(ctx) => *contexts = Some(ctx),
+                    Err(_) => {
+                        log::error!("Failed to create context list for 4-tuple");
+                        *contexts = Some(ZeroOneOrMany::none());
+                    }
+                }
+            }
         }
     }
 }
