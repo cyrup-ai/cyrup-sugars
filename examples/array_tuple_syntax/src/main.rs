@@ -7,7 +7,7 @@ use sugars_llm::*;
 use cyrup_sugars::prelude::*;
 
 // Helper trait for the example
-trait ExecToText {
+trait ExecToText { 
     fn exec_to_text(&self) -> String;
 }
 
@@ -82,16 +82,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // your custom logic - return a processed message
         process_turn()
     })
-    .on_chunk(on_chunk!(|chunk| {
-        Ok => {
-            println!("{}", chunk);
-            chunk.into()
-        },
-        Err(bad_chunk) => MessageChunk {
-            content: format!("Error: {}", bad_chunk),
-            role: MessageRole::System
-        }
-    }))
+    .on_chunk(|chunk| {
+        println!("{}", chunk);
+        chunk.into()
+    })
+    .on_error(|bad_chunk| MessageChunk {
+        content: format!("Error: {}", bad_chunk),
+        role: MessageRole::System
+    })
     .into_agent() // Agent Now
     .conversation_history(MessageRole::User, "What time is it in Paris, France")
     .conversation_history(MessageRole::System, "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45")

@@ -33,7 +33,7 @@ let builder = FluentAi::agent_role("example")
 
 ```rust
 /// Set additional parameters with array tuple syntax
-pub fn additional_params<T>(mut self, params: T) -> Self 
+pub fn additional_params<T>(mut self, params: T) -> Self
 where
     T: IntoHashMap
 {
@@ -163,12 +163,10 @@ let stream = FluentAi::agent_role("rusty-squire")
         agent.chat(process_turn()) // your custom logic
     })
     .on_chunk(|chunk| {          // unwrap chunk closure :: NOTE: THIS MUST PRECEDE .chat()
-        Ok => {                  // `.chat()` returns AsyncStream<MessageChunk> vs. AsyncStream<Result<MessageChunk>>
-            println!("{}", chunk);   // stream response here or from the AsyncStream .chat() returns
-            chunk.into()
-        },
-        Err(bad_chunk) => bad_chunk.into()  // E: Into<T> - convert error to success type T
+        println!("{}", chunk);   // stream response here or from the AsyncStream .chat() returns  
+        chunk.into()
     })
+    .on_error(|bad_chunk| bad_chunk.into())  // E: Into<T> - convert error to success type T
     .into_agent() // Agent Now
     .conversation_history(MessageRole::User => "What time is it in Paris, France",
             MessageRole::System => "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45",
@@ -184,16 +182,14 @@ let stream = FluentAi::agent_role("rusty-squire")
 use cyrup_sugars::prelude::*;
 use sugars_llm::*;
 
-// Elegant pattern matching with cyrup_sugars on_chunk macro
+// Elegant chunk and error handling with separate methods
 let stream = FluentAi::agent_role("assistant")
     .completion_provider(Mistral::MAGISTRAL_SMALL)
-    .on_chunk(on_chunk!(|chunk| {  // Zero-allocation pattern matching
-        Ok => {                     // Handle successful chunks
-            println!("{}", chunk);  // Process chunk data
-            chunk.into()           // Convert good chunk to T
-        },
-        Err(bad_chunk) => BadChunk::from_err(bad_chunk)  // Convert error to BadChunk of type T
-    }))
+    .on_chunk(|chunk| {  // Handle successful chunks
+        println!("{}", chunk);  // Process chunk data
+        chunk.into()           // Convert good chunk to T
+    })
+    .on_error(|bad_chunk| BadChunk::from_err(bad_chunk))  // Convert error to BadChunk of type T
     .chat("Hello")?; // AsyncStream<MessageChunk>
 ```
 
@@ -209,7 +205,7 @@ Tool::<Perplexity>::new([("citations", "true")])
 ### Run Examples
 
 ```bash
-# Array tuple syntax with on_chunk macro
+# Array tuple syntax with on_chunk and on_error methods
 cd examples/array_tuple_syntax && cargo run
 
 # Async task pipeline

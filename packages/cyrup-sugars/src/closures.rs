@@ -14,48 +14,6 @@ macro_rules! on_result {
     };
 }
 
-/// Creates a closure that processes Result<T, E> where E: Into<T> with elegant pattern matching.
-/// Both Ok and Err branches return type T directly for zero-allocation stream processing.
-/// Available when both 'macros' and any async feature are enabled.
-#[macro_export]
-macro_rules! on_chunk {
-    (|$chunk:ident| {
-        Ok => $ok_expr:expr,
-        Err($err:ident) => $err_expr:expr
-    }) => {
-        |$chunk| match $chunk {
-            Ok($chunk) => $ok_expr,
-            Err($err) => $err_expr
-        }
-    };
-    (|$chunk:ident| {
-        Ok => $ok_block:block,
-        Err($err:ident) => $err_expr:expr
-    }) => {
-        |$chunk| match $chunk {
-            Ok($chunk) => $ok_block,
-            Err($err) => $err_expr
-        }
-    };
-    (|$chunk:ident| {
-        Ok => $ok_expr:expr,
-        Err($err:ident) => $err_block:block
-    }) => {
-        |$chunk| match $chunk {
-            Ok($chunk) => $ok_expr,
-            Err($err) => $err_block
-        }
-    };
-    (|$chunk:ident| {
-        Ok => $ok_block:block,
-        Err($err:ident) => $err_block:block
-    }) => {
-        |$chunk| match $chunk {
-            Ok($chunk) => $ok_block,
-            Err($err) => $err_block
-        }
-    };
-}
 
 /// Creates a closure that handles errors with the provided expression.
 /// Available when both 'macros' and any async feature are enabled.

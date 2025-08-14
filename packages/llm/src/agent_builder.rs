@@ -3,6 +3,7 @@
 //! This provides a complete, feature-rich implementation of the FluentAI builder
 //! with full support for ergonomic JSON syntax and advanced agent configuration.
 
+use cyrup_sugars::prelude::*;
 use cyrup_sugars::AsyncStream;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -10,6 +11,11 @@ use std::collections::HashMap;
 /// Trait for converting various types to HashMaps for JSON-like syntax support
 pub trait IntoHashMap {
     fn into_hashmap(self) -> hashbrown::HashMap<&'static str, &'static str>;
+}
+
+/// Trait for converting pattern matching closures to proper Result handlers
+pub trait IntoChunkHandler {
+    fn into_chunk_handler(self) -> Box<dyn Fn(Result<MessageChunk, String>) -> MessageChunk + Send + Sync + 'static>;
 }
 
 /// Implement IntoHashMap for closures (existing functionality)
@@ -40,6 +46,16 @@ impl<const N: usize> IntoHashMap for [(&'static str, &'static str); N] {
 impl IntoHashMap for Vec<(&'static str, &'static str)> {
     fn into_hashmap(self) -> hashbrown::HashMap<&'static str, &'static str> {
         self.into_iter().collect()
+    }
+}
+
+/// Implement IntoChunkHandler for regular closures
+impl<F> IntoChunkHandler for F 
+where
+    F: Fn(Result<MessageChunk, String>) -> MessageChunk + Send + Sync + 'static,
+{
+    fn into_chunk_handler(self) -> Box<dyn Fn(Result<MessageChunk, String>) -> MessageChunk + Send + Sync + 'static> {
+        Box::new(self)
     }
 }
 
@@ -188,6 +204,10 @@ pub struct AgentRoleBuilder {
     metadata: Option<HashMap<String, Value>>,
     #[allow(dead_code)]
     memory: Option<Library>,
+    #[allow(dead_code)]
+    chunk_handler: Option<Box<dyn Fn(MessageChunk) -> MessageChunk + Send + Sync + 'static>>,
+    #[allow(dead_code)]
+    error_handler: Option<Box<dyn Fn(String) -> MessageChunk + Send + Sync + 'static>>,
 }
 
 /// Message role enum
@@ -210,6 +230,7 @@ impl std::fmt::Display for MessageChunk {
         write!(f, "{:?}: {}", self.role, self.content)
     }
 }
+
 
 /// Intelligent conversational agent with advanced capabilities
 pub struct Agent {
@@ -240,6 +261,8 @@ impl FluentAi {
             additional_params: None,
             metadata: None,
             memory: None,
+            chunk_handler: None,
+            error_handler: None,
         }
     }
 }
@@ -340,27 +363,32 @@ impl AgentRoleBuilder {
         self
     }
 
-    /// Handle streaming chunks with clean syntax
-    pub fn on_chunk<F>(self, handler: F) -> AgentRoleBuilderWithChunkHandler<F>
-    where
-        F: Fn(Result<MessageChunk, String>) -> MessageChunk + Send + Sync + 'static,
-    {
-        self.on_chunk_impl(handler)
-    }
 
+    /// Convert to agent - EXACT syntax: .into_agent()
+    pub fn into_agent(self) -> Agent {
+        Agent {
+            builder: self,
+            history: Vec::new(),
+        }
+    }
 }
 
-// Internal implementation that accepts processed closures
-impl AgentRoleBuilder {
-    /// Internal method that accepts closure from cyrup_sugars macro
-    pub fn on_chunk_impl<F>(self, handler: F) -> AgentRoleBuilderWithChunkHandler<F>
+/// Implement ChunkHandler trait for AgentRoleBuilder
+impl ChunkHandler<MessageChunk> for AgentRoleBuilder {
+    fn on_chunk<F>(mut self, handler: F) -> Self
     where
-        F: Fn(Result<MessageChunk, String>) -> MessageChunk + Send + Sync + 'static,
+        F: Fn(MessageChunk) -> MessageChunk + Send + Sync + 'static,
     {
-        AgentRoleBuilderWithChunkHandler {
-            inner: self,
-            chunk_handler: handler,
-        }
+        self.chunk_handler = Some(Box::new(handler));
+        self
+    }
+
+    fn on_error<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(String) -> MessageChunk + Send + Sync + 'static,
+    {
+        self.error_handler = Some(Box::new(handler));
+        self
     }
 }
 
@@ -380,25 +408,6 @@ impl<T> McpServerBuilder<T> {
     }
 }
 
-/// Builder with chunk handler
-pub struct AgentRoleBuilderWithChunkHandler<F> {
-    #[allow(dead_code)]
-    inner: AgentRoleBuilder,
-    #[allow(dead_code)]
-    chunk_handler: F,
-}
-
-impl<F> AgentRoleBuilderWithChunkHandler<F>
-where
-    F: Fn(Result<MessageChunk, String>) -> MessageChunk + Send + Sync + 'static,
-{
-    pub fn into_agent(self) -> Agent {
-        Agent {
-            builder: self.inner,
-            history: Vec::new(),
-        }
-    }
-}
 
 impl Agent {
     /// Set conversation history
@@ -430,6 +439,7 @@ impl Agent {
 pub fn exec_to_text() -> String {
     "Command help text".to_string()
 }
+
 
 
 

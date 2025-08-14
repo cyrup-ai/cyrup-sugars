@@ -111,6 +111,9 @@ pub mod prelude {
     // Re-export async utilities
     pub use crate::r#async::{FutureExt, NotResult, StreamExt};
 
+    // Re-export builder utilities
+    pub use crate::builders::ChunkHandler;
+
     // Re-export macros for elegant stream processing (from local closures module)
-    pub use crate::{on_chunk, on_result};
+    pub use crate::on_result;
 }

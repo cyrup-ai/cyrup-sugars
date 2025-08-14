@@ -2,7 +2,9 @@
 //!
 //! This module provides reusable components for creating fluent typestate builders
 //! that leverage all cyrup_sugars features seamlessly.
+pub mod chunk_handler;
 pub mod llm;
+pub use chunk_handler::*;
 pub use llm::*;
 
 use serde::{Deserialize, Serialize};
@@ -310,22 +312,6 @@ pub mod macros {
 pub mod closure_macros {
     /// Re-export closure macros for builder usage
     // Macros are automatically re-exported by macro_export attribute
-    /// Builder-specific result handling macro
-    #[macro_export]
-    macro_rules! build_result {
-        (Ok => $ok:expr, Err => $err:expr) => {
-            |result| match result {
-                Ok(value) => {
-                    let value = value;
-                    $ok
-                }
-                Err(error) => {
-                    let error = error;
-                    $err
-                }
-            }
-        };
-    }
 
     /// Builder validation macro
     #[macro_export]
@@ -347,7 +333,6 @@ pub mod closure_macros {
         };
     }
 
-    pub use build_result;
     pub use validate_config;
 }
 
