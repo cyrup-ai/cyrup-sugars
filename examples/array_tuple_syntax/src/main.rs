@@ -3,11 +3,11 @@
 //! This example demonstrates the exact array tuple syntax shown in the
 //! cyrup_sugars README.md file including the elegant on_chunk macro.
 
-use sugars_llm::*;
 use cyrup_sugars::prelude::*;
+use sugars_llm::*;
 
 // Helper trait for the example
-trait ExecToText { 
+trait ExecToText {
     fn exec_to_text(&self) -> String;
 }
 
@@ -82,13 +82,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // your custom logic - return a processed message
         process_turn()
     })
-    .on_chunk(|chunk| {
-        println!("{}", chunk);
-        chunk.into()
-    })
-    .on_error(|bad_chunk| MessageChunk {
-        content: format!("Error: {}", bad_chunk),
-        role: MessageRole::System
+    .on_chunk(|result| match result {
+        Ok(chunk) => {
+            println!("{}", chunk);
+            chunk.into()
+        },
+        Err(error) => {
+            // Creates a BadChunk with error information
+            ConversationChunk::bad_chunk(error)
+        }
     })
     .into_agent() // Agent Now
     .conversation_history(MessageRole::User, "What time is it in Paris, France")

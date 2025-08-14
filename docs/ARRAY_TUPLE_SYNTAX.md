@@ -587,4 +587,149 @@ let builder = Builder::new()
     .params([("key", "value"), ("foo", "bar")]);
 ```
 
+## Message Chunk Handling with Builder Traits
+
+The cyrup-sugars ecosystem provides powerful builder traits for handling streaming message chunks with proper error handling:
+
+### Core Traits
+
+#### MessageChunk Trait
+
+The `MessageChunk` trait enables types to represent both success and error states:
+
+```rust
+use cyrup_sugars::prelude::*;
+
+pub trait MessageChunk: Sized {
+    /// Create a bad chunk from an error
+    fn bad_chunk(error: String) -> Self;
+    
+    /// Get the error if this is a bad chunk
+    fn error(&self) -> Option<&str>;
+    
+    /// Check if this chunk represents an error
+    fn is_error(&self) -> bool {
+        self.error().is_some()
+    }
+}
+
+// Example implementation
+impl MessageChunk for ConversationChunk {
+    fn bad_chunk(error: String) -> Self {
+        ConversationChunk {
+            content: format!("Error: {}", error),
+            role: MessageRole::System,
+            error: Some(error),
+        }
+    }
+    
+    fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+}
+```
+
+#### ChunkHandler Trait
+
+The ChunkHandler trait provides a single method for handling streaming Results:
+
+```rust
+// ChunkHandler - processes Result<T, E> streams
+pub trait ChunkHandler<T, E = String>: Sized 
+where
+    T: MessageChunk,
+{
+    fn on_chunk<F>(self, handler: F) -> Self
+    where
+        F: Fn(Result<T, E>) -> T + Send + Sync + 'static;
+}
+```
+
+This single method handles both success and error cases in one place, simplifying the API.
+
+### Using with Array Tuple Syntax
+
+Combine array tuple syntax with chunk handling for elegant builder patterns:
+
+```rust
+let agent = FluentAi::agent_role("assistant")
+    .additional_params([("beta", "true"), ("debug", "false")])  // Array tuple syntax
+    .metadata([("key", "val"), ("foo", "bar")])                // Array tuple syntax
+    .on_chunk(|result| match result {                           // ChunkHandler trait
+        Ok(chunk) => {
+            println!("Processing: {}", chunk);
+            chunk
+        },
+        Err(e) => ConversationChunk::bad_chunk(e)
+    })
+    .into_agent();
+```
+
+### Stream Processing Pattern
+
+When processing async streams with chunk handlers:
+
+```rust
+// The stream produces Result<ConversationChunk, String>
+let stream = agent.chat("Hello")?;
+
+// Internal processing uses the handlers
+while let Some(result) = stream.next().await {
+    // If on_chunk handler is set, it unwraps the Result
+    let chunk = chunk_handler(result);
+    
+    // Check if it's an error chunk
+    if chunk.is_error() {
+        eprintln!("Error chunk: {:?}", chunk.error());
+    } else {
+        println!("Success: {}", chunk);
+    }
+}
+```
+
+### Complete Example
+
+```rust
+use cyrup_sugars::prelude::*;
+use sugars_llm::*;
+
+// Builder implements ChunkHandler
+impl ChunkHandler<ConversationChunk> for AgentRoleBuilder {}
+
+let agent = FluentAi::agent_role("coding-assistant")
+    // Array tuple syntax for configuration
+    .additional_params([
+        ("model", "gpt-4"),
+        ("temperature", "0.7"),
+        ("max_tokens", "2000")
+    ])
+    
+    // Tools with array tuple syntax
+    .tools(
+        Tool::<Perplexity>::new([("citations", "true")]),
+        Tool::named("cargo").bin("~/.cargo/bin")
+    )
+    
+    // Chunk handling with proper error management
+    .on_chunk(|result| match result {
+        Ok(chunk) => chunk,
+        Err(e) => {
+            eprintln!("Stream error: {}", e);
+            ConversationChunk::bad_chunk(e)
+        }
+    })
+    
+    .into_agent();
+
+// Use the agent
+let stream = agent.chat("Write a Rust function")?;
+```
+
+### Best Practices
+
+1. **Always implement MessageChunk** for your chunk types to enable error tracking
+2. **Use on_chunk for Result unwrapping** - it handles both Ok and Err cases in one place
+3. **Check is_error() when processing** - allows downstream error handling
+4. **Combine with array tuple syntax** - creates clean, readable builder chains
+
 This guide provides a complete foundation for implementing array tuple syntax in your Rust builder patterns. The `[("key", "value")]` syntax works automatically with Rust's standard library - no macros or special transformations are needed.

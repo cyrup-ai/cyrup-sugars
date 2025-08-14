@@ -14,6 +14,7 @@ Syntactic sugar utilities for Rust - collections, async patterns, and macros.
 - `async` - Async utilities: `AsyncTask` and `AsyncStream`
 - `macros` - Collection and async macros
 - `array-tuples` - Array tuple syntax for collections
+- `builders` - Builder traits: `MessageChunk`, `ChunkHandler`
 - `gix-interop` - Git object hash tables
 
 ### Array Tuple Syntax
@@ -104,6 +105,17 @@ Both types support JSON serialization, builder patterns, and zero-allocation opt
 
 📖 **For complete guides, see [OneOrMany Guide](./docs/ONE_OR_MANY.md) and [ZeroOneOrMany Guide](./docs/ZERO_ONE_OR_MANY.md)**
 
+### Builder Traits
+
+The `builders` feature provides traits for message chunk handling:
+
+- **`MessageChunk`** - Trait for types that can represent both success and error states
+- **`ChunkHandler<T, E>`** - Handles streaming `Result<T, E>` by unwrapping to `T`
+
+These traits enable consistent error handling patterns across builders with a single `on_chunk` method that handles both success and error cases.
+
+📖 **For complete implementation guide, see the [ChunkHandler Pattern Guide](./docs/CHUNK_HANDLER.md)** - Step-by-step instructions for implementing the full pattern from scratch.
+
 ## Quick Start
 
 Add this to your `Cargo.toml`:
@@ -162,11 +174,13 @@ let stream = FluentAi::agent_role("rusty-squire")
         log.info("Agent: " + conversation.last().message())
         agent.chat(process_turn()) // your custom logic
     })
-    .on_chunk(|chunk| {          // unwrap chunk closure :: NOTE: THIS MUST PRECEDE .chat()
-        println!("{}", chunk);   // stream response here or from the AsyncStream .chat() returns  
-        chunk.into()
+    .on_chunk(|result| match result {  // Handle Result<T, E> unwrapping
+        Ok(chunk) => {
+            println!("{}", chunk);
+            chunk
+        },
+        Err(e) => ConversationChunk::bad_chunk(e)  // Convert error to bad chunk
     })
-    .on_error(|bad_chunk| bad_chunk.into())  // E: Into<T> - convert error to success type T
     .into_agent() // Agent Now
     .conversation_history(MessageRole::User => "What time is it in Paris, France",
             MessageRole::System => "The USER is inquiring about the time in Paris, France. Based on their IP address, I see they are currently in Las Vegas, Nevada, USA. The current local time is 16:45",
@@ -176,21 +190,27 @@ let stream = FluentAi::agent_role("rusty-squire")
 
 ## Working Examples
 
-### Complete on_chunk Usage
+### Message Chunk Handling
+
+The `builders` feature provides powerful traits for handling streaming message chunks:
 
 ```rust
 use cyrup_sugars::prelude::*;
 use sugars_llm::*;
 
-// Elegant chunk and error handling with separate methods
-let stream = FluentAi::agent_role("assistant")
-    .completion_provider(Mistral::MAGISTRAL_SMALL)
-    .on_chunk(|chunk| {  // Handle successful chunks
-        println!("{}", chunk);  // Process chunk data
-        chunk.into()           // Convert good chunk to T
-    })
-    .on_error(|bad_chunk| BadChunk::from_err(bad_chunk))  // Convert error to BadChunk of type T
-    .chat("Hello")?; // AsyncStream<MessageChunk>
+// MessageChunk trait - implemented by chunk types
+pub trait MessageChunk: Sized {
+    fn bad_chunk(error: String) -> Self;  // Create error chunk
+    fn error(&self) -> Option<&str>;      // Get error if present
+    fn is_error(&self) -> bool;           // Check if error chunk
+}
+
+// ChunkHandler trait - processes Result<T, E> streams
+let builder = builder
+    .on_chunk(|result| match result {
+        Ok(chunk) => chunk,
+        Err(e) => ConversationChunk::bad_chunk(e)
+    });
 ```
 
 ### Array Tuple Syntax
@@ -205,7 +225,7 @@ Tool::<Perplexity>::new([("citations", "true")])
 ### Run Examples
 
 ```bash
-# Array tuple syntax with on_chunk and on_error methods
+# Array tuple syntax with on_chunk method
 cd examples/array_tuple_syntax && cargo run
 
 # Async task pipeline

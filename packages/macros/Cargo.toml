@@ -1,12 +1,12 @@
 [package]
 name = "sugars_macros"
-version = "0.2.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "Procedural macros for array tuple syntax and builder patterns"
-license = "MIT OR Apache-2.0"
-authors = ["David Maple <david@cyrup.ai>"]
-homepage = "https://github.com/cyrup-ai/cyrup-sugars"
-repository = "https://github.com/cyrup-ai/cyrup-sugars"
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
 documentation = "https://docs.rs/sugars_macros"
 keywords = ["rust", "macros", "proc-macro", "builder", "cyrup"]
 categories = ["development-tools::procedural-macro-helpers"]
@@ -17,7 +17,7 @@ path = "src/lib.rs"
 proc-macro = true
 
 [dependencies]
-hashbrown = { version = "0.15.4", features = ["serde"] }
+hashbrown = { version = "0.15", features = ["serde"] }
 # workspace-hack = { version = "0.2.0", path = "../../workspace-hack" }
 syn = { version = "2.0", features = ["full", "extra-traits"] }
 quote = "1.0"

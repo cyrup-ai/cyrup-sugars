@@ -1,14 +1,14 @@
 [package]
 name = "sugars_collections"
-version = "0.2.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "Efficient collection types including ZeroOneOrMany and OneOrMany with array tuple syntax support"
-license = "MIT OR Apache-2.0"
-authors = ["David Maple <david@cyrup.ai>"]
-homepage = "https://github.com/cyrup-ai/cyrup-sugars"
-repository = "https://github.com/cyrup-ai/cyrup-sugars"
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
 documentation = "https://docs.rs/sugars_collections"
-keywords = ["rust", "utilities", "collections", "async", "cyrup"]
+keywords.workspace = true
 categories = ["data-structures", "development-tools"]
 readme = "../../README.md"
 
@@ -18,8 +18,8 @@ name = "sugars_collections"
 
 [dependencies]
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = { version = "1.0.140" }
-hashbrown = { version = "0.15.4" }
+serde_json = { version = "1" }
+hashbrown = { version = "0.15" }
 # workspace-hack = { version = "0.2.0", path = "../../workspace-hack" }
 
 [features]

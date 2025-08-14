@@ -15,3 +15,13 @@ members = [
     "workspace-hack",
 ]
 resolver = "2"
+
+[workspace.package]
+version = "0.3.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+authors = ["David Maple <david@cyrup.ai>"]
+homepage = "https://github.com/cyrup-ai/cyrup-sugars"
+repository = "https://github.com/cyrup-ai/cyrup-sugars"
+keywords = ["rust", "utilities", "collections", "async", "cyrup"]
+categories = ["development-tools"]

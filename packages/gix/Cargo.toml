@@ -1,12 +1,12 @@
 [package]
 name = "sugars_gix"
-version = "0.2.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "Git integration utilities for the cyrup-sugars ecosystem"
-license = "MIT OR Apache-2.0"
-authors = ["David Maple <david@cyrup.ai>"]
-homepage = "https://github.com/cyrup-ai/cyrup-sugars"
-repository = "https://github.com/cyrup-ai/cyrup-sugars"
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
 documentation = "https://docs.rs/sugars_gix"
 keywords = ["rust", "git", "gix", "utilities", "cyrup"]
 categories = ["development-tools"]

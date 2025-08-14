@@ -15,7 +15,7 @@ pub trait IntoHashMap {
 
 /// Trait for converting pattern matching closures to proper Result handlers
 pub trait IntoChunkHandler {
-    fn into_chunk_handler(self) -> Box<dyn Fn(Result<MessageChunk, String>) -> MessageChunk + Send + Sync + 'static>;
+    fn into_chunk_handler(self) -> Box<dyn Fn(Result<ConversationChunk, String>) -> ConversationChunk + Send + Sync + 'static>;
 }
 
 /// Implement IntoHashMap for closures (existing functionality)
@@ -52,9 +52,9 @@ impl IntoHashMap for Vec<(&'static str, &'static str)> {
 /// Implement IntoChunkHandler for regular closures
 impl<F> IntoChunkHandler for F 
 where
-    F: Fn(Result<MessageChunk, String>) -> MessageChunk + Send + Sync + 'static,
+    F: Fn(Result<ConversationChunk, String>) -> ConversationChunk + Send + Sync + 'static,
 {
-    fn into_chunk_handler(self) -> Box<dyn Fn(Result<MessageChunk, String>) -> MessageChunk + Send + Sync + 'static> {
+    fn into_chunk_handler(self) -> Box<dyn Fn(Result<ConversationChunk, String>) -> ConversationChunk + Send + Sync + 'static> {
         Box::new(self)
     }
 }
@@ -205,9 +205,7 @@ pub struct AgentRoleBuilder {
     #[allow(dead_code)]
     memory: Option<Library>,
     #[allow(dead_code)]
-    chunk_handler: Option<Box<dyn Fn(MessageChunk) -> MessageChunk + Send + Sync + 'static>>,
-    #[allow(dead_code)]
-    error_handler: Option<Box<dyn Fn(String) -> MessageChunk + Send + Sync + 'static>>,
+    chunk_handler: Option<Box<dyn Fn(Result<ConversationChunk, String>) -> ConversationChunk + Send + Sync + 'static>>,
 }
 
 /// Message role enum
@@ -218,14 +216,29 @@ pub enum MessageRole {
     Assistant,
 }
 
-/// Message chunk for real-time streaming communication
+/// Conversation chunk for real-time streaming communication
 #[derive(Debug, Clone)]
-pub struct MessageChunk {
+pub struct ConversationChunk {
     pub content: String,
     pub role: MessageRole,
+    error: Option<String>,
 }
 
-impl std::fmt::Display for MessageChunk {
+impl MessageChunk for ConversationChunk {
+    fn bad_chunk(error: String) -> Self {
+        ConversationChunk {
+            content: format!("Error: {}", error),
+            role: MessageRole::System,
+            error: Some(error),
+        }
+    }
+    
+    fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+}
+
+impl std::fmt::Display for ConversationChunk {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}: {}", self.role, self.content)
     }
@@ -262,7 +275,6 @@ impl FluentAi {
             metadata: None,
             memory: None,
             chunk_handler: None,
-            error_handler: None,
         }
     }
 }
@@ -373,21 +385,13 @@ impl AgentRoleBuilder {
     }
 }
 
-/// Implement ChunkHandler trait for AgentRoleBuilder
-impl ChunkHandler<MessageChunk> for AgentRoleBuilder {
+/// Implement ChunkHandler for AgentRoleBuilder
+impl ChunkHandler<ConversationChunk, String> for AgentRoleBuilder {
     fn on_chunk<F>(mut self, handler: F) -> Self
     where
-        F: Fn(MessageChunk) -> MessageChunk + Send + Sync + 'static,
+        F: Fn(Result<ConversationChunk, String>) -> ConversationChunk + Send + Sync + 'static,
     {
         self.chunk_handler = Some(Box::new(handler));
-        self
-    }
-
-    fn on_error<F>(mut self, handler: F) -> Self
-    where
-        F: Fn(String) -> MessageChunk + Send + Sync + 'static,
-    {
-        self.error_handler = Some(Box::new(handler));
         self
     }
 }
@@ -420,14 +424,15 @@ impl Agent {
     pub fn chat(
         self,
         message: impl Into<String>,
-    ) -> Result<AsyncStream<MessageChunk>, Box<dyn std::error::Error>> {
+    ) -> Result<AsyncStream<ConversationChunk>, Box<dyn std::error::Error>> {
         let message = message.into();
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
         // Send a simple response
-        let chunk = MessageChunk {
+        let chunk = ConversationChunk {
             content: format!("Echo: {}", message),
             role: MessageRole::Assistant,
+            error: None,
         };
         let _ = tx.send(chunk);
 
