@@ -48,16 +48,16 @@ async fn main() {
 
 async fn single_receiver_example() {
     let (tx, rx) = oneshot::channel();
-    
+
     // Create AsyncTask with single receiver
     let task = AsyncTask::new(ZeroOneOrMany::one(rx));
-    
+
     // Spawn a task to send data
     tokio::spawn(async move {
         sleep(Duration::from_millis(100)).await;
         let _ = tx.send("Hello from single receiver!");
     });
-    
+
     let result = task.await;
     println!("  Received: {}", result);
 }
@@ -66,26 +66,26 @@ async fn multiple_receivers_example() {
     let (tx1, rx1) = oneshot::channel();
     let (tx2, rx2) = oneshot::channel();
     let (tx3, rx3) = oneshot::channel();
-    
+
     // Create AsyncTask with multiple receivers
     let task = AsyncTask::new(ZeroOneOrMany::many(vec![rx1, rx2, rx3]));
-    
+
     // Spawn tasks with different delays
     tokio::spawn(async move {
         sleep(Duration::from_millis(200)).await;
         let _ = tx1.send("Message from sender 1 (slow)");
     });
-    
+
     tokio::spawn(async move {
         sleep(Duration::from_millis(50)).await;
         let _ = tx2.send("Message from sender 2 (fast)"); // This will win
     });
-    
+
     tokio::spawn(async move {
         sleep(Duration::from_millis(150)).await;
         let _ = tx3.send("Message from sender 3 (medium)");
     });
-    
+
     let result = task.await;
     println!("  First result: {}", result);
 }
@@ -95,7 +95,7 @@ async fn from_future_example() {
         sleep(Duration::from_millis(100)).await;
         "Computed value from future".to_string()
     }
-    
+
     let task = AsyncTask::from_future(compute_value());
     let result = task.await;
     println!("  Result: {}", result);
@@ -112,27 +112,27 @@ async fn parallel_processing_example() {
         sleep(Duration::from_millis(delay)).await;
         format!("Data from {}", name)
     }
-    
+
     let (tx1, rx1) = oneshot::channel();
     let (tx2, rx2) = oneshot::channel();
     let (tx3, rx3) = oneshot::channel();
-    
+
     // Spawn parallel processing tasks
     tokio::spawn(async move {
         let data = process_data_source("Database", 120).await;
         let _ = tx1.send(data);
     });
-    
+
     tokio::spawn(async move {
         let data = process_data_source("Cache", 80).await;
         let _ = tx2.send(data);
     });
-    
+
     tokio::spawn(async move {
         let data = process_data_source("API", 100).await;
         let _ = tx3.send(data);
     });
-    
+
     // Get the fastest result
     let task = AsyncTask::new(ZeroOneOrMany::many(vec![rx1, rx2, rx3]));
     let result = task.await;
@@ -141,16 +141,16 @@ async fn parallel_processing_example() {
 
 async fn timeout_pattern_example() {
     use tokio::time::timeout;
-    
+
     let (tx, rx) = oneshot::channel();
     let task = AsyncTask::new(ZeroOneOrMany::one(rx));
-    
+
     // Simulate slow operation
     tokio::spawn(async move {
         sleep(Duration::from_millis(200)).await;
         let _ = tx.send("Slow operation completed");
     });
-    
+
     // Apply timeout
     match timeout(Duration::from_millis(100), task).await {
         Ok(result) => println!("  Result: {}", result),

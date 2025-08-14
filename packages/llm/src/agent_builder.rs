@@ -3,8 +3,8 @@
 //! This provides a complete, feature-rich implementation of the FluentAI builder
 //! with full support for ergonomic JSON syntax and advanced agent configuration.
 
-use cyrup_sugars::prelude::*;
 use cyrup_sugars::AsyncStream;
+use cyrup_sugars::prelude::*;
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -15,13 +15,15 @@ pub trait IntoHashMap {
 
 /// Trait for converting pattern matching closures to proper Result handlers
 pub trait IntoChunkHandler {
-    fn into_chunk_handler(self) -> Box<dyn Fn(Result<ConversationChunk, String>) -> ConversationChunk + Send + Sync + 'static>;
+    fn into_chunk_handler(
+        self,
+    ) -> Box<dyn Fn(Result<ConversationChunk, String>) -> ConversationChunk + Send + Sync + 'static>;
 }
 
 /// Implement IntoHashMap for closures (existing functionality)
-impl<F> IntoHashMap for F 
+impl<F> IntoHashMap for F
 where
-    F: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>
+    F: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>,
 {
     fn into_hashmap(self) -> hashbrown::HashMap<&'static str, &'static str> {
         self()
@@ -50,19 +52,20 @@ impl IntoHashMap for Vec<(&'static str, &'static str)> {
 }
 
 /// Implement IntoChunkHandler for regular closures
-impl<F> IntoChunkHandler for F 
+impl<F> IntoChunkHandler for F
 where
     F: Fn(Result<ConversationChunk, String>) -> ConversationChunk + Send + Sync + 'static,
 {
-    fn into_chunk_handler(self) -> Box<dyn Fn(Result<ConversationChunk, String>) -> ConversationChunk + Send + Sync + 'static> {
+    fn into_chunk_handler(
+        self,
+    ) -> Box<dyn Fn(Result<ConversationChunk, String>) -> ConversationChunk + Send + Sync + 'static>
+    {
         Box::new(self)
     }
 }
 
 // Re-export the hash_map macro for internal use
 pub use sugars_collections::hash_map;
-
-
 
 /// Wrapper type for JSON syntax closures
 pub struct JsonClosure<F>(F);
@@ -73,12 +76,12 @@ impl<F> JsonClosure<F> {
     }
 }
 
-impl<F> Into<hashbrown::HashMap<&'static str, &'static str>> for JsonClosure<F>
+impl<F> From<JsonClosure<F>> for hashbrown::HashMap<&'static str, &'static str>
 where
     F: FnOnce() -> hashbrown::HashMap<&'static str, &'static str>,
 {
-    fn into(self) -> hashbrown::HashMap<&'static str, &'static str> {
-        (self.0)()
+    fn from(val: JsonClosure<F>) -> Self {
+        (val.0)()
     }
 }
 
@@ -125,9 +128,9 @@ pub struct NamedTool {
 }
 
 impl<T> Tool<T> {
-    pub fn new<P>(_params: P) -> Tool<T> 
+    pub fn new<P>(_params: P) -> Tool<T>
     where
-        P: IntoHashMap
+        P: IntoHashMap,
     {
         // Store params in a real implementation
         Tool(std::marker::PhantomData)
@@ -204,8 +207,10 @@ pub struct AgentRoleBuilder {
     metadata: Option<HashMap<String, Value>>,
     #[allow(dead_code)]
     memory: Option<Library>,
-    #[allow(dead_code)]
-    chunk_handler: Option<Box<dyn Fn(Result<ConversationChunk, String>) -> ConversationChunk + Send + Sync + 'static>>,
+    #[allow(dead_code, clippy::type_complexity)]
+    chunk_handler: Option<
+        Box<dyn Fn(Result<ConversationChunk, String>) -> ConversationChunk + Send + Sync + 'static>,
+    >,
 }
 
 /// Message role enum
@@ -232,7 +237,7 @@ impl MessageChunk for ConversationChunk {
             error: Some(error),
         }
     }
-    
+
     fn error(&self) -> Option<&str> {
         self.error.as_deref()
     }
@@ -243,7 +248,6 @@ impl std::fmt::Display for ConversationChunk {
         write!(f, "{:?}: {}", self.role, self.content)
     }
 }
-
 
 /// Intelligent conversational agent with advanced capabilities
 pub struct Agent {
@@ -326,9 +330,9 @@ impl AgentRoleBuilder {
     }
 
     /// Set additional parameters with JSON object syntax
-    pub fn additional_params<T>(mut self, params: T) -> Self 
+    pub fn additional_params<T>(mut self, params: T) -> Self
     where
-        T: IntoHashMap
+        T: IntoHashMap,
     {
         let config_map = params.into_hashmap();
         let mut map = HashMap::new();
@@ -346,9 +350,9 @@ impl AgentRoleBuilder {
     }
 
     /// Set metadata with JSON object syntax  
-    pub fn metadata<T>(mut self, metadata: T) -> Self 
+    pub fn metadata<T>(mut self, metadata: T) -> Self
     where
-        T: IntoHashMap
+        T: IntoHashMap,
     {
         let config_map = metadata.into_hashmap();
         let mut map = HashMap::new();
@@ -374,7 +378,6 @@ impl AgentRoleBuilder {
     {
         self
     }
-
 
     /// Convert to agent - EXACT syntax: .into_agent()
     pub fn into_agent(self) -> Agent {
@@ -412,7 +415,6 @@ impl<T> McpServerBuilder<T> {
     }
 }
 
-
 impl Agent {
     /// Set conversation history
     pub fn conversation_history(mut self, role: MessageRole, message: &str) -> Self {
@@ -444,11 +446,6 @@ impl Agent {
 pub fn exec_to_text() -> String {
     "Command help text".to_string()
 }
-
-
-
-
-
 
 // Re-export everything needed
 pub use crate::models::*;

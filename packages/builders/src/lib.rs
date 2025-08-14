@@ -310,7 +310,7 @@ pub mod macros {
 
 /// Feature-gated closure macros for builders
 pub mod closure_macros {
-    /// Re-export closure macros for builder usage
+    // Re-export closure macros for builder usage
     // Macros are automatically re-exported by macro_export attribute
 
     /// Builder validation macro

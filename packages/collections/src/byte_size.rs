@@ -226,6 +226,7 @@ mod tests {
     #[test]
     fn test_clone_copy() {
         let original = ByteSize::kilobytes(5);
+        #[allow(clippy::clone_on_copy)]
         let cloned = original.clone();
         let copied = original;
 

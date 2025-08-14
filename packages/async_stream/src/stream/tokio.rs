@@ -55,7 +55,7 @@ where
     {
         let (tx, rx) = tokio::sync::oneshot::channel();
         let mut receiver = self.receiver;
-        
+
         tokio::spawn(async move {
             let mut items = Vec::new();
             while let Some(item) = receiver.recv().await {
@@ -63,7 +63,7 @@ where
             }
             let _ = tx.send(items);
         });
-        
+
         AsyncTask::new(ZeroOneOrMany::one(rx))
     }
 }

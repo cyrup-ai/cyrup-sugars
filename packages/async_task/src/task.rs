@@ -6,14 +6,14 @@
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use tokio::sync::oneshot;
 use sugars_collections::ZeroOneOrMany;
+use tokio::sync::oneshot;
 
 /// Marker trait to prevent Result types in AsyncTask/AsyncStream
 ///
 /// This trait is automatically implemented for all types except Result types.
 /// It uses negative impls to explicitly exclude Result<T, E> from being used
-/// in AsyncTask<T> or AsyncStream<T>.
+/// in `AsyncTask<T>` or `AsyncStream<T>`.
 pub auto trait NotResult {}
 
 // Negative implementations - Result types do NOT implement NotResult
@@ -48,9 +48,7 @@ where
                 drop(tx); // Closed channel
                 Self { receiver: rx }
             }
-            ZeroOneOrMany::One(receiver) => {
-                Self { receiver }
-            }
+            ZeroOneOrMany::One(receiver) => Self { receiver },
             ZeroOneOrMany::Many(receivers) => {
                 // Take the first receiver
                 if let Some(receiver) = receivers.into_iter().next() {

@@ -8,10 +8,10 @@
 pub trait MessageChunk: Sized {
     /// Create a bad chunk from an error
     fn bad_chunk(error: String) -> Self;
-    
+
     /// Get the error if this is a bad chunk
     fn error(&self) -> Option<&str>;
-    
+
     /// Check if this chunk represents an error
     fn is_error(&self) -> bool {
         self.error().is_some()
@@ -19,16 +19,16 @@ pub trait MessageChunk: Sized {
 }
 
 /// Trait for builders that can handle streaming Results by unwrapping them
-/// 
+///
 /// The `on_chunk` method takes a `Result<T, E>` and returns `T`, unwrapping the Result.
-pub trait ChunkHandler<T, E = String>: Sized 
+pub trait ChunkHandler<T, E = String>: Sized
 where
     T: MessageChunk,
 {
     /// Set a handler that unwraps Result<T, E> to T
-    /// 
+    ///
     /// # Example
-    /// ```rust
+    /// ```ignore
     /// builder.on_chunk(|result| match result {
     ///     Ok(chunk) => {
     ///         println!("Processing: {}", chunk);

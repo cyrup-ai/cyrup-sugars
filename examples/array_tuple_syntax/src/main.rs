@@ -85,7 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .on_chunk(|result| match result {
         Ok(chunk) => {
             println!("{}", chunk);
-            chunk.into()
+            chunk
         },
         Err(error) => {
             // Creates a BadChunk with error information

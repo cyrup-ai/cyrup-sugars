@@ -20,11 +20,10 @@ macro_rules! array_tuple_closure_llm {
     };
 }
 
-
 // Re-export the FluentAi builder and all required types
 pub use agent_builder::{
-    exec_to_text, Agent, AgentRoleBuilder, Context, ConversationChunk, Directory, File, Files, FluentAi, Github,
-    Library, MessageRole, NamedTool, Perplexity, Stdio, Tool,
+    Agent, AgentRoleBuilder, Context, ConversationChunk, Directory, File, Files, FluentAi, Github,
+    Library, MessageRole, NamedTool, Perplexity, Stdio, Tool, exec_to_text,
 };
 
 // Re-export the array_tuple_closure macro for transparent array tuple syntax

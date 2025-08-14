@@ -80,9 +80,10 @@ pub use sugars_collections::{ByteSize, ByteSizeExt, OneOrMany, ZeroOneOrMany};
 // Re-export array tuple extension traits when both features are enabled
 #[cfg(feature = "array-tuples")]
 pub use sugars_collections::{
-    CollectionArrayTupleExtKString, CollectionArrayTupleExtKV, CollectionArrayTupleExtStringString,
-    CollectionArrayTupleExtStringV, ArrayTupleObjectExtKString, ArrayTupleObjectExtKV, ArrayTupleObjectExtStringString,
-    ArrayTupleObjectExtStringV, TryCollectionArrayTupleExtKString, TryCollectionArrayTupleExtKV,
+    ArrayTupleObjectExtKString, ArrayTupleObjectExtKV, ArrayTupleObjectExtStringString,
+    ArrayTupleObjectExtStringV, CollectionArrayTupleExtKString, CollectionArrayTupleExtKV,
+    CollectionArrayTupleExtStringString, CollectionArrayTupleExtStringV,
+    TryCollectionArrayTupleExtKString, TryCollectionArrayTupleExtKV,
     TryCollectionArrayTupleExtStringString, TryCollectionArrayTupleExtStringV,
 };
 
@@ -93,16 +94,17 @@ pub use r#async::{
 
 // Re-export JSON syntax macros for array-tuples feature
 #[cfg(feature = "array-tuples")]
-pub use sugars_macros::hash_map_fn;
-#[cfg(feature = "array-tuples")]
 pub use sugars_collections::hash_map;
+#[cfg(feature = "array-tuples")]
+pub use sugars_macros::hash_map_fn;
 
 /// Prelude module that brings common macros and types into scope
 pub mod prelude {
-    //! Common imports for cyrup_sugars users
 
     // Re-export commonly used types
-    pub use crate::{AsyncResult, AsyncStream, AsyncTask, ByteSize, ByteSizeExt, OneOrMany, ZeroOneOrMany};
+    pub use crate::{
+        AsyncResult, AsyncStream, AsyncTask, ByteSize, ByteSizeExt, OneOrMany, ZeroOneOrMany,
+    };
 
     // Re-export JSON syntax macros when array-tuples feature is enabled
     #[cfg(feature = "array-tuples")]

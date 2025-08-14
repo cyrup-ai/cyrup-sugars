@@ -14,7 +14,6 @@ macro_rules! on_result {
     };
 }
 
-
 /// Creates a closure that handles errors with the provided expression.
 /// Available when both 'macros' and any async feature are enabled.
 #[macro_export]

@@ -19,9 +19,10 @@ pub use zero_one_or_many::ZeroOneOrMany;
 // Re-export extension traits
 #[cfg(feature = "array-tuples")]
 pub use array_tuple_ext::{
-    CollectionArrayTupleExtKString, CollectionArrayTupleExtKV, CollectionArrayTupleExtStringString,
-    CollectionArrayTupleExtStringV, ArrayTupleObjectExtKString, ArrayTupleObjectExtKV, ArrayTupleObjectExtStringString,
-    ArrayTupleObjectExtStringV, TryCollectionArrayTupleExtKString, TryCollectionArrayTupleExtKV,
+    ArrayTupleObjectExtKString, ArrayTupleObjectExtKV, ArrayTupleObjectExtStringString,
+    ArrayTupleObjectExtStringV, CollectionArrayTupleExtKString, CollectionArrayTupleExtKV,
+    CollectionArrayTupleExtStringString, CollectionArrayTupleExtStringV,
+    TryCollectionArrayTupleExtKString, TryCollectionArrayTupleExtKV,
     TryCollectionArrayTupleExtStringString, TryCollectionArrayTupleExtStringV,
 };
 
@@ -92,16 +93,16 @@ macro_rules! array_tuple_closure_internal {
 macro_rules! array_tuple_closure_replace {
     // Empty case
     () => {};
-    
+
     // Handle array tuple blocks first - highest priority
     ( $($prefix:tt)* [ $($inner:tt)+ ] $($suffix:tt)* ) => {
-        array_tuple_closure_replace_inner! { 
+        array_tuple_closure_replace_inner! {
             prefix: [ $($prefix)* ]
             block: [ $($inner)+ ]
             suffix: [ $($suffix)* ]
         }
     };
-    
+
     // No array tuple blocks found - pass through unchanged
     ( $($tokens:tt)* ) => {
         $($tokens)*
@@ -144,10 +145,9 @@ macro_rules! array_tuple_closure_tuple_check {
     ( prefix: [ $($prefix:tt)* ] inner: [ $($pre:tt)* ( $($tuple:tt)* ) $($post:tt)* ] suffix: [ $($suffix:tt)* ] ) => {
         array_tuple_closure_replace! { $($prefix)* sugars_macros::hash_map_fn! [ $($pre)* ( $($tuple)* ) $($post)* ] $($suffix)* }
     };
-    
+
     // No tuple found - keep original block
     ( prefix: [ $($prefix:tt)* ] inner: [ $($inner:tt)+ ] suffix: [ $($suffix:tt)* ] ) => {
         array_tuple_closure_replace! { $($prefix)* [ $($inner)+ ] $($suffix)* }
     };
 }
-

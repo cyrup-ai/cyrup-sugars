@@ -24,11 +24,6 @@ pub fn array_tuple_syntax(_attr: TokenStream, item: TokenStream) -> TokenStream 
     item
 }
 
-
-
-
-
-
 /// Creates a closure that returns a hashbrown HashMap from key-value pairs
 ///
 /// This replaces the macro_rules! version to work in proc-macro crates
