@@ -137,9 +137,45 @@ wait-for-index:
     @echo "⏳ Waiting 15 seconds for crates.io to index..."
     @sleep 15
 
-# Release all packages in dependency order
+# Modern release using cyrup_release (recommended)
 release TYPE="patch":
+    @echo "🚀 Starting release with cyrup_release..."
+    cargo run --package cyrup_release -- release {{TYPE}} --verbose
+
+# Dry run release using cyrup_release
+release-dry TYPE="patch":
+    @echo "🎭 Dry run release with cyrup_release..."
+    cargo run --package cyrup_release -- release {{TYPE}} --dry-run --verbose
+
+# Rollback a failed release
+rollback:
+    @echo "🔄 Rolling back release..."
+    cargo run --package cyrup_release -- rollback --verbose
+
+# Resume an interrupted release
+resume:
+    @echo "▶️ Resuming release..."
+    cargo run --package cyrup_release -- resume --verbose
+
+# Show release status
+status:
+    @echo "📊 Release status..."
+    cargo run --package cyrup_release -- status --detailed
+
+# Validate workspace for release
+validate:
+    @echo "✅ Validating workspace..."
+    cargo run --package cyrup_release -- validate --detailed
+
+# Preview version bump
+preview TYPE="patch":
+    @echo "🔍 Previewing {{TYPE}} version bump..."
+    cargo run --package cyrup_release -- preview {{TYPE}} --detailed
+
+# Legacy release (old perl-based approach - kept for emergency fallback)
+release-legacy TYPE="patch":
     # Bump version
+    @echo "⚠️ Using legacy release method..."
     @echo "Bumping {{TYPE}} version..."
     just bump {{TYPE}}
     # Get new version
@@ -181,11 +217,11 @@ release TYPE="patch":
     git push origin "v$(just get-version)"
     @echo "✅ Release v$(just get-version) complete!"
 
-# Dry run release (no actual publishing)
-release-dry TYPE="patch":
+# Legacy dry run release
+release-dry-legacy TYPE="patch":
     # Check if ready
     just release-checklist
-    @echo "🎭 DRY RUN - No actual publishing"
+    @echo "🎭 DRY RUN - No actual publishing (legacy method)"
     # Show what would happen
     @echo "Would bump {{TYPE}} version"
     @echo "Current version: $(just get-version)"
