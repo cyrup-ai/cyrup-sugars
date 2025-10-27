@@ -16,9 +16,9 @@ readme = "../../README.md"
 path = "src/lib.rs"
 
 [dependencies]
-sugars_collections = { version = "0.5.0", path = "../collections" }
-sugars_async_task = { version = "0.5.0", path = "../async_task" }
-sugars_macros = { version = "0.5.0", path = "../macros" }
+sugars_collections = { version = "0.5.1", path = "../collections" }
+sugars_async_task = { version = "0.5.1", path = "../async_task" }
+sugars_macros = { version = "0.5.1", path = "../macros" }
 hashbrown = { version = "0.15.4", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = { version = "1.0.140" }
