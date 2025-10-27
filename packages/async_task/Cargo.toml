@@ -19,7 +19,7 @@ path = "src/lib.rs"
 tokio = { version = "1.46.1", features = ["rt", "sync"], optional = true }
 futures = "0.3.31"
 parking_lot = { version = "0.12.4", optional = true }
-sugars_collections = { version = "0.5.2", path = "../collections" }
+sugars_collections = { version = "0.5.3", path = "../collections" }
 # workspace-hack = { version = "0.2.0", path = "../../workspace-hack" }
 
 [features]

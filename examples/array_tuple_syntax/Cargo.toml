@@ -11,11 +11,11 @@ publish = false
 
 [dependencies]
 # Core sugars functionality
-sugars_collections = { path = "../../packages/collections" }
-sugars_builders = { path = "../../packages/builders" }
-sugars_llm = { path = "../../packages/llm" }
-cyrup_sugars = { path = "../../packages/cyrup-sugars", features = ["tokio-async", "array-tuples"] }
-sugars_macros = { path = "../../packages/macros" }
+sugars_collections = { path = "../../packages/collections" , version = "0.5.3" }
+sugars_builders = { path = "../../packages/builders" , version = "0.5.3" }
+sugars_llm = { path = "../../packages/llm" , version = "0.5.3" }
+cyrup_sugars = { path = "../../packages/cyrup-sugars", features = ["tokio-async", "array-tuples"] , version = "0.5.3" }
+sugars_macros = { path = "../../packages/macros" , version = "0.5.3" }
 
 # Required for array tuple syntax
 hashbrown = { version = "0.15", features = ["serde"] }

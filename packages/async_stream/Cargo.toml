@@ -16,8 +16,8 @@ readme = "../../README.md"
 path = "src/lib.rs"
 
 [dependencies]
-sugars_async_task = { version = "0.5.2", path = "../async_task" }
-sugars_collections = { version = "0.5.2", path = "../collections" }
+sugars_async_task = { version = "0.5.3", path = "../async_task" }
+sugars_collections = { version = "0.5.3", path = "../collections" }
 tokio = { version = "1.47", features = ["rt", "sync", "macros"], optional = true }
 futures = "0.3.31"
 parking_lot = { version = "0.12.4", optional = true }

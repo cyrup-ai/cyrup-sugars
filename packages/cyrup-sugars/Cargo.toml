@@ -25,12 +25,12 @@ crossbeam-async = ["crossbeam", "futures", "async-channel", "sugars_async_stream
 array-tuples = ["sugars_collections/array-tuples"]
 
 [dependencies]
-sugars_collections = { version = "0.5.2", path = "../collections" }
-sugars_async_task = { version = "0.5.2", path = "../async_task" }
-sugars_async_stream = { version = "0.5.2", path = "../async_stream" }
-sugars_macros = { version = "0.5.2", path = "../macros" }
-sugars_gix = { version = "0.5.2", path = "../gix" }
-sugars_builders = { version = "0.5.2", path = "../builders" }
+sugars_collections = { version = "0.5.3", path = "../collections" }
+sugars_async_task = { version = "0.5.3", path = "../async_task" }
+sugars_async_stream = { version = "0.5.3", path = "../async_stream" }
+sugars_macros = { version = "0.5.3", path = "../macros" }
+sugars_gix = { version = "0.5.3", path = "../gix" }
+sugars_builders = { version = "0.5.3", path = "../builders" }
 serde = { version = "1.0.219", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
 hashbrown = { version = "0.15", features = ["serde"], optional = true }

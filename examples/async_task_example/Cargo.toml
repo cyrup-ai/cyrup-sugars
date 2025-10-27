@@ -11,5 +11,5 @@ publish = false
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-sugars_async_task = { path = "../../packages/async_task" }
-sugars_collections = { path = "../../packages/collections" }
+sugars_async_task = { path = "../../packages/async_task" , version = "0.5.3" }
+sugars_collections = { path = "../../packages/collections" , version = "0.5.3" }
