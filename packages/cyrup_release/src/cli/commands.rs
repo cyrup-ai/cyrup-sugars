@@ -204,7 +204,6 @@ async fn execute_release(args: &Args, config: &RuntimeConfig) -> Result<()> {
         // Phase 1: Version Update
         config.println("📝 Updating versions...");
         release_state.set_phase(ReleasePhase::VersionUpdate);
-        state_manager.save_state(&release_state)?;
 
         // Capture original versions before bumping (for rollback support)
         let mut original_versions = std::collections::HashMap::new();
@@ -229,7 +228,6 @@ async fn execute_release(args: &Args, config: &RuntimeConfig) -> Result<()> {
         // Phase 2: Git Operations
         config.println("📦 Creating git commit and tag...");
         release_state.set_phase(ReleasePhase::GitOperations);
-        state_manager.save_state(&release_state)?;
 
         let git_result = git_manager.perform_release(&new_version, !no_push).await?;
         release_state.set_git_state(Some(&git_result.commit), Some(&git_result.tag));
