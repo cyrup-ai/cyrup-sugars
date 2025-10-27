@@ -297,13 +297,23 @@ impl VersionUpdater {
                         }
                     } else {
                         // Missing version specification for internal dependency
-                        inconsistencies.push(VersionInconsistency {
-                            package: package_name.clone(),
-                            dependency: Some(dep_name.clone()),
-                            expected_version: workspace_version.clone(),
-                            actual_version: Version::new(0, 0, 0), // Placeholder
-                            inconsistency_type: InconsistencyType::MissingVersion,
-                        });
+                        // This is only an inconsistency if the DEPENDENCY is publishable
+                        // For publish=false dependencies, missing versions are correct
+                        let dep_package = self.workspace.packages.get(dep_name);
+                        let dep_is_publishable = dep_package
+                            .and_then(|p| p.config.other.get("publish"))
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(true); // Default to true if not specified
+                        
+                        if dep_is_publishable {
+                            inconsistencies.push(VersionInconsistency {
+                                package: package_name.clone(),
+                                dependency: Some(dep_name.clone()),
+                                expected_version: workspace_version.clone(),
+                                actual_version: Version::new(0, 0, 0), // Placeholder
+                                inconsistency_type: InconsistencyType::MissingVersion,
+                            });
+                        }
                     }
                 }
             }
