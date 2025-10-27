@@ -134,8 +134,10 @@ impl GitManager {
     pub async fn perform_release(&mut self, version: &Version, push_to_remote: bool) -> Result<ReleaseResult> {
         let start_time = std::time::Instant::now();
 
-        // Validate repository is ready for release
-        self.validate_for_release().await?;
+        // Note: Validation is performed at the start of the release command,
+        // before version files are modified. We don't validate here because
+        // the working directory is expected to have modified version files
+        // that need to be committed as part of the release.
 
         // Store current HEAD for potential rollback
         let current_branch = self.repository.get_current_branch().await?;
@@ -249,17 +251,6 @@ impl GitManager {
             warnings,
             duration,
         })
-    }
-
-    /// Validate repository is ready for release
-    async fn validate_for_release(&self) -> Result<()> {
-        let validation = self.repository.validate_release_readiness().await?;
-        
-        if !validation.is_ready {
-            return Err(GitError::DirtyWorkingDirectory.into());
-        }
-
-        Ok(())
     }
 
     /// Generate commit message for release
