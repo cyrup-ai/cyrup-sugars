@@ -2,6 +2,11 @@
 name = "zero_one_or_many_example"
 version.workspace = true
 edition.workspace = true
+description = "Example demonstrating ZeroOneOrMany collection type for optional multi-value fields"
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
 publish = false
 
 [dependencies]

@@ -2,6 +2,11 @@
 name = "async_task_example"
 version.workspace = true
 edition.workspace = true
+description = "Example demonstrating AsyncTask usage for zero-allocation async operations"
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
 publish = false
 
 [dependencies]

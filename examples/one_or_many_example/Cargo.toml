@@ -2,6 +2,11 @@
 name = "one_or_many_example"
 version.workspace = true
 edition.workspace = true
+description = "Example demonstrating OneOrMany collection type for flexible APIs"
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
 publish = false
 
 [dependencies]
