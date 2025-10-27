@@ -80,6 +80,17 @@ impl TomlEditor {
                             reason: "Unexpected version format in inline table".to_string(),
                         }.into());
                     }
+                    Item::Table(table) => {
+                        // Handle dotted key workspace inheritance: version.workspace = true
+                        if table.contains_key("workspace") {
+                            // Version is inherited from workspace, don't modify
+                            return Ok(());
+                        }
+                        return Err(VersionError::TomlUpdateFailed {
+                            path: self.file_path.clone(),
+                            reason: "Unexpected version format in table".to_string(),
+                        }.into());
+                    }
                     _ => {
                         return Err(VersionError::TomlUpdateFailed {
                             path: self.file_path.clone(),
