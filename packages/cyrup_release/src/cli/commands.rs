@@ -203,7 +203,6 @@ async fn execute_release(args: &Args, config: &RuntimeConfig) -> Result<()> {
 
         // Phase 1: Version Update
         config.println("📝 Updating versions...");
-        release_state.set_phase(ReleasePhase::VersionUpdate);
 
         // Capture original versions before bumping (for rollback support)
         let mut original_versions = std::collections::HashMap::new();
@@ -211,9 +210,11 @@ async fn execute_release(args: &Args, config: &RuntimeConfig) -> Result<()> {
             original_versions.insert(package_name.clone(), package_info.version.clone());
         }
         release_state.set_original_versions(original_versions);
-        state_manager.save_state(&release_state)?;
 
         let version_result = version_manager.release_version(version_bump)?;
+        
+        // Set phase and state together to maintain consistency
+        release_state.set_phase(ReleasePhase::VersionUpdate);
         release_state.set_version_state(&version_result.update_result);
         release_state.add_checkpoint(
             "version_updated".to_string(),
@@ -227,9 +228,11 @@ async fn execute_release(args: &Args, config: &RuntimeConfig) -> Result<()> {
 
         // Phase 2: Git Operations
         config.println("📦 Creating git commit and tag...");
-        release_state.set_phase(ReleasePhase::GitOperations);
 
         let git_result = git_manager.perform_release(&new_version, !no_push).await?;
+        
+        // Set phase and state together to maintain consistency
+        release_state.set_phase(ReleasePhase::GitOperations);
         release_state.set_git_state(Some(&git_result.commit), Some(&git_result.tag));
         
         if let Some(push_info) = &git_result.push_info {
