@@ -293,3 +293,4 @@ docs/async-graphql
 ./history
 ./CLAUDE.md
 ./TODO.md
+.cyrup_release_state*.json
