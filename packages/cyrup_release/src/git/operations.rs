@@ -379,16 +379,117 @@ impl GitRepository {
 #[async_trait::async_trait]
 impl GitOperations for GitRepository {
     async fn create_release_commit(&self, version: &Version, message: Option<String>) -> Result<CommitInfo> {
-        // Add all changes to index first
-        self.add_all_changes().await?;
+        let repo = self.gix_repository().clone();
+        let version_clone = version.clone();
+        let message_clone = message.clone();
         
-        let repo = self.gix_repository();
-        
-        // Re-open index for tree building
-        let index = repo.open_index()
-            .map_err(|e| GitError::CommitFailed {
-                reason: format!("Failed to open index: {}", e),
-            })?;
+        // Run in spawn_blocking to avoid holding references across await
+        let commit_info = tokio::task::spawn_blocking(move || {
+            // Get current index
+            let mut index = repo.open_index()
+                .map_err(|e| GitError::CommitFailed {
+                    reason: format!("Failed to open index: {}", e),
+                })?;
+            
+            // Get working directory
+            let workdir = repo.workdir()
+                .ok_or_else(|| GitError::CommitFailed {
+                    reason: "Cannot commit in bare repository".to_string(),
+                })?;
+            
+            let mut changed = false;
+            
+            // Collect entries to process to avoid borrow issues
+            let entries_to_process: Vec<_> = (0..index.entries().len())
+                .map(|idx| {
+                    let entry = &index.entries()[idx];
+                    let entry_path = entry.path(&index).to_owned();
+                    let entry_id = entry.id;
+                    (entry_path, entry_id)
+                })
+                .collect();
+            
+            // Process each tracked file
+            for (entry_path, old_id) in entries_to_process {
+                use gix::bstr::ByteSlice;
+                let path_str = std::str::from_utf8(entry_path.as_bytes())
+                    .map_err(|_| GitError::CommitFailed {
+                        reason: "Invalid UTF-8 in path".to_string(),
+                    })?;
+                let full_path = workdir.join(std::path::Path::new(path_str));
+                
+                // Skip non-existent or non-file entries
+                if !full_path.exists() || !full_path.is_file() {
+                    continue;
+                }
+                
+                // Read file contents
+                let contents = std::fs::read(&full_path)
+                    .map_err(|e| GitError::CommitFailed {
+                        reason: format!("Failed to read {}: {}", full_path.display(), e),
+                    })?;
+                
+                // Write blob and get ID
+                let blob_id = repo.write_blob(&contents)
+                    .map_err(|e| GitError::CommitFailed {
+                        reason: format!("Failed to write blob: {}", e),
+                    })?
+                    .detach();
+                
+                // Only update if content changed
+                if blob_id != old_id {
+                    // Get file metadata
+                    let metadata = gix::index::fs::Metadata::from_path_no_follow(&full_path)
+                        .map_err(|e| GitError::CommitFailed {
+                            reason: format!("Failed to get metadata: {}", e),
+                        })?;
+                    
+                    // Determine mode
+                    use gix::index::entry::Mode;
+                    let mode = if metadata.is_executable() {
+                        Mode::FILE_EXECUTABLE
+                    } else {
+                        Mode::FILE
+                    };
+                    
+                    // Create stat
+                    use gix::index::entry::Stat;
+                    let stat = Stat::from_fs(&metadata)
+                        .map_err(|e| GitError::CommitFailed {
+                            reason: format!("Failed to create stat: {}", e),
+                        })?;
+                    
+                    // Add to index
+                    use gix::index::entry::Flags;
+                    index.dangerously_push_entry(
+                        stat,
+                        blob_id,
+                        Flags::empty(),
+                        mode,
+                        entry_path.as_ref(),
+                    );
+                    changed = true;
+                }
+            }
+            
+            // If we modified the index, write it to disk
+            if changed {
+                // CRITICAL: Sort entries to maintain index invariants
+                index.sort_entries();
+                
+                // Write index with proper locking and checksum
+                use gix::index::write::Options;
+                index.write(Options::default())
+                    .map_err(|e| GitError::CommitFailed {
+                        reason: format!("Failed to write index: {}", e),
+                    })?;
+                
+                // Re-open index for tree building after write
+                index = repo.open_index()
+                    .map_err(|e| GitError::CommitFailed {
+                        reason: format!("Failed to re-open index: {}", e),
+                    })?;
+            }
         
         // Create tree editor to build hierarchical tree structure
         let mut editor = gix::objs::tree::Editor::new(
@@ -439,38 +540,79 @@ impl GitOperations for GitRepository {
             .map(gix::Id::detach)
             .collect();
         
-        // Create author and committer signatures
-        let author_sig = self.create_signature()?;
-        let committer_sig = author_sig.clone();
-        
-        // Build commit message
-        let commit_message = message.unwrap_or_else(|| format!("release: v{}", version));
-        
-        // Create time buffers for signature conversion
-        use gix::date::parse::TimeBuf;
-        let mut committer_time_buf = TimeBuf::default();
-        let mut author_time_buf = TimeBuf::default();
-        
-        // Create commit using commit_as
-        let commit_id = repo.commit_as(
-            committer_sig.to_ref(&mut committer_time_buf),
-            author_sig.to_ref(&mut author_time_buf),
-            "HEAD",
-            &commit_message,
-            tree_id,
-            parents,
-        )
-        .map_err(|e| GitError::CommitFailed {
-            reason: format!("Failed to create commit: {}", e),
-        })?;
-        
-        // Convert to CommitInfo
-        let commit = repo.find_commit(commit_id)
+            // Create author and committer signatures from config
+            let config = repo.config_snapshot();
+            let name = config.string("user.name")
+                .ok_or_else(|| GitError::CommitFailed {
+                    reason: "Git user.name not configured".to_string(),
+                })?;
+            let email = config.string("user.email")
+                .ok_or_else(|| GitError::CommitFailed {
+                    reason: "Git user.email not configured".to_string(),
+                })?;
+            
+            let author_sig = gix::actor::Signature {
+                name: name.into_owned().into(),
+                email: email.into_owned().into(),
+                time: gix::date::Time::now_local_or_utc(),
+            };
+            let committer_sig = author_sig.clone();
+            
+            // Build commit message
+            let commit_message = message_clone.unwrap_or_else(|| format!("release: v{}", version_clone));
+            
+            // Create time buffers for signature conversion
+            use gix::date::parse::TimeBuf;
+            let mut committer_time_buf = TimeBuf::default();
+            let mut author_time_buf = TimeBuf::default();
+            
+            // Create commit using commit_as
+            let commit_id = repo.commit_as(
+                committer_sig.to_ref(&mut committer_time_buf),
+                author_sig.to_ref(&mut author_time_buf),
+                "HEAD",
+                &commit_message,
+                tree_id,
+                parents,
+            )
             .map_err(|e| GitError::CommitFailed {
-                reason: format!("Failed to find created commit: {}", e),
+                reason: format!("Failed to create commit: {}", e),
             })?;
+            
+            // Convert to CommitInfo
+            let commit = repo.find_commit(commit_id)
+                .map_err(|e| GitError::CommitFailed {
+                    reason: format!("Failed to find created commit: {}", e),
+                })?;
+            
+            let author = commit.author().map_err(|e| GitError::CommitFailed {
+                reason: format!("Failed to get author: {}", e),
+            })?;
+            let message = commit.message().map_err(|e| GitError::CommitFailed {
+                reason: format!("Failed to get message: {}", e),
+            })?;
+            let summary = message.summary().to_string();
+            
+            let parent_ids: Vec<String> = commit.parent_ids()
+                .map(|id| id.to_string())
+                .collect();
+            
+            Ok::<CommitInfo, crate::error::ReleaseError>(CommitInfo {
+                hash: commit_id.to_string(),
+                short_hash: commit_id.to_string()[..7].to_string(),
+                message: summary,
+                author_name: author.name.to_string(),
+                author_email: author.email.to_string(),
+                timestamp: chrono::Utc::now(),
+                parents: parent_ids,
+            })
+        })
+        .await
+        .map_err(|e| GitError::CommitFailed {
+            reason: format!("Task join error: {}", e),
+        })??;
         
-        self.commit_to_info(commit)
+        Ok(commit_info)
     }
 
     async fn create_version_tag(&self, version: &Version, message: Option<String>) -> Result<TagInfo> {
