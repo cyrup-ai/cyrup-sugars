@@ -1,7 +1,7 @@
 [package]
 name = "one_or_many_example"
-version = "0.2.1"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 publish = false
 
 [dependencies]
