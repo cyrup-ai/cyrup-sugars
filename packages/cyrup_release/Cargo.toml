@@ -66,7 +66,7 @@ env_logger = "0.11"
 path-absolutize = "3.1"
 
 # Workspace integration 
-sugars_collections = { version = "0.4.0", path = "../collections" }
+sugars_collections = { version = "0.5.0", path = "../collections" }
 
 [dev-dependencies]
 tempfile = "3.14"
