@@ -267,14 +267,14 @@ impl GitRepository {
 #[async_trait::async_trait]
 impl GitOperations for GitRepository {
     async fn create_release_commit(&self, version: &Version, message: Option<String>) -> Result<CommitInfo> {
-        // Use proven kodegen implementation
-        let repo_handle = kodegen_tools_git::RepoHandle::new(self.gix_repository().clone());
+        // Use proven kodegen implementation (now sugars_gix)
+        let repo_handle = sugars_gix::RepoHandle::new(self.gix_repository().clone());
         let commit_message = message.unwrap_or_else(|| format!("release: v{}", version));
         
-        let opts = kodegen_tools_git::CommitOpts::message(commit_message)
+        let opts = sugars_gix::CommitOpts::message(commit_message)
             .all(true);  // Stage all changes
         
-        let commit_id = kodegen_tools_git::commit(repo_handle.clone(), opts).await
+        let commit_id = sugars_gix::commit(repo_handle.clone(), opts).await
             .map_err(|e| GitError::CommitFailed {
                 reason: format!("kodegen commit failed: {}", e),
             })?;

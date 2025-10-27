@@ -2,21 +2,36 @@
 name = "sugars_gix"
 version.workspace = true
 edition.workspace = true
-description = "Git integration utilities for the cyrup-sugars ecosystem"
-license.workspace = true
 authors.workspace = true
+license.workspace = true
 homepage.workspace = true
 repository.workspace = true
-documentation = "https://docs.rs/sugars_gix"
-keywords = ["rust", "git", "gix", "utilities", "cyrup"]
-categories = ["development-tools"]
-readme = "../../README.md"
-
-[lib]
-path = "src/lib.rs"
+description = "Git operations using gix (Gitoxide) library - adapted from kodegen"
+publish = false
 
 [dependencies]
-gix-hash = "0.18.0"
-parking_lot = "0.12.4"
-hashbrown = "0.15.4"
-# workspace-hack = { version = "0.2.0", path = "../../workspace-hack" }
+gix = { version = "0.74", default-features = false, features = [
+    "blocking-network-client",
+    "max-performance",
+    "credentials",
+    "revision",
+    "index",
+    "blob-diff",
+    "worktree-mutation",
+    "merge",
+    "excludes",
+    "status",
+] }
+thiserror = "2.0"
+chrono = "0.4"
+tokio = { version = "1.47", features = ["rt", "rt-multi-thread", "macros", "sync", "fs"] }
+tokio-stream = "0.1"
+futures = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+walkdir = "2.5"
+anyhow = "1.0"
+
+[lib]
+name = "sugars_gix"
+path = "src/lib.rs"
