@@ -21,8 +21,11 @@ name = "cyrup_release"
 path = "src/lib.rs"
 
 [dependencies]
-# Git operations using pure Rust (no CLI)
-gix = "0.73.0"
+# Git operations using proven kodegen implementation
+kodegen_tools_git = { path = "/Users/davidmaple/kodegen/packages/tools-git" }
+
+# Git operations using pure Rust (no CLI)  
+gix = "0.74.0"
 
 # Format-preserving TOML editing
 toml_edit = "0.23.3"
