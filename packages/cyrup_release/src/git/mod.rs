@@ -14,8 +14,7 @@ pub use manager::{
     GitManager, GitConfig, ReleaseResult, RollbackResult, BackupPoint, RepositoryStats,
 };
 
-use crate::error::{Result, GitError};
-use std::path::Path;
+use crate::error::Result;
 
 /// Create a Git manager for the current directory
 pub fn create_git_manager() -> Result<GitManager> {

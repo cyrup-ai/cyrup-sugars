@@ -86,8 +86,7 @@ impl DependencyGraph {
         // Perform topological sort
         let sorted_indices = toposort(&self.graph, None)
             .map_err(|cycle| {
-                let cycle_packages: Vec<String> = cycle.node_id()
-                    .and_then(|idx| self.index_map.get(&idx))
+                let cycle_packages: Vec<String> = self.index_map.get(&cycle.node_id())
                     .map(|name| vec![name.clone()])
                     .unwrap_or_else(|| vec!["unknown".to_string()]);
 
@@ -183,7 +182,7 @@ impl DependencyGraph {
     /// Validate that the dependency graph has no circular dependencies
     fn validate_no_cycles(&self) -> Result<()> {
         // Convert to undirected graph for cycle detection
-        let undirected: UnGraph<String, ()> = self.graph.clone().into_edge_type();
+        let _undirected: UnGraph<String, ()> = self.graph.clone().into_edge_type();
         
         // Use DFS to detect cycles more efficiently
         let mut dfs_space = DfsSpace::new(&self.graph);
@@ -209,10 +208,8 @@ impl DependencyGraph {
     fn find_cycle_from_node(
         &self,
         start_node: NodeIndex,
-        dfs_space: &mut DfsSpace<NodeIndex, std::collections::HashSet<NodeIndex>>,
+        _dfs_space: &mut DfsSpace<NodeIndex, fixedbitset::FixedBitSet>,
     ) -> Option<Vec<NodeIndex>> {
-        use petgraph::visit::DfsPostOrder;
-        
         let mut visited = std::collections::HashSet::new();
         let mut recursion_stack = std::collections::HashSet::new();
         let mut path = Vec::new();

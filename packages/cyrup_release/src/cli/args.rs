@@ -5,7 +5,6 @@
 
 use crate::version::VersionBump;
 use clap::{Parser, Subcommand, ValueEnum};
-use semver::Version;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -89,6 +88,10 @@ pub enum Command {
         /// Don't create backups during operation
         #[arg(long)]
         no_backup: bool,
+
+        /// Maximum concurrent package publishes per dependency tier
+        #[arg(long, default_value = "1", value_name = "COUNT")]
+        max_concurrent: usize,
     },
 
     /// Rollback a failed or completed release
@@ -379,8 +382,11 @@ pub struct RuntimeConfig {
 /// Verbosity level for output
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VerbosityLevel {
+    /// Minimal output, only errors
     Quiet,
+    /// Standard output level
     Normal,
+    /// Detailed output with debug information
     Verbose,
 }
 

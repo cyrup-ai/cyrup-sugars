@@ -13,7 +13,7 @@ pub use publisher::{
     Publisher, PublisherConfig, PublishingResult, RollbackResult, PublishProgress,
 };
 
-use crate::error::{Result, PublishError};
+use crate::error::Result;
 use crate::workspace::WorkspaceInfo;
 use semver::Version;
 

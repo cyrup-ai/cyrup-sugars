@@ -3,17 +3,17 @@
 //! This module implements the complete release workflow by coordinating
 //! all modules and providing comprehensive error handling and user feedback.
 
-use crate::cli::{Args, Command, BumpType, ResumePhase, RuntimeConfig, VerbosityLevel};
+use crate::cli::{Args, Command, BumpType, ResumePhase, RuntimeConfig};
 use crate::error::{Result, ReleaseError};
 use crate::git::{GitManager, GitConfig};
 use crate::publish::{Publisher, PublisherConfig};
 use crate::state::{
-    StateManager, ReleaseState, ReleasePhase, ReleaseConfig, 
-    create_state_manager_at, has_active_release_at
+    ReleaseState, ReleasePhase, ReleaseConfig,
+    create_state_manager_at, has_active_release_at,
+    StateConfig, create_state_manager_with_config,
 };
-use crate::version::{VersionManager, VersionBump};
+use crate::version::{VersionManager, VersionBump, TomlEditor};
 use crate::workspace::{WorkspaceInfo, WorkspaceValidator};
-use std::process;
 use std::time::Duration;
 
 /// Execute the main command based on parsed arguments
@@ -73,11 +73,19 @@ async fn execute_release(args: &Args, config: &RuntimeConfig) -> Result<()> {
         no_push,
         registry,
         package_delay,
-        max_retries,
-        timeout,
+        max_retries: _,
+        timeout: _,
         no_backup,
+        max_concurrent,
     } = &args.command {
         config.verbose_println("Starting release operation...");
+
+        // Validate max_concurrent
+        if *max_concurrent == 0 {
+            return Err(ReleaseError::Cli(crate::error::CliError::InvalidArguments {
+                reason: "max-concurrent must be at least 1".to_string(),
+            }));
+        }
 
         // Check for existing release state
         if has_active_release_at(&config.state_file_path) {
@@ -128,7 +136,7 @@ async fn execute_release(args: &Args, config: &RuntimeConfig) -> Result<()> {
         let publisher_config = PublisherConfig {
             inter_package_delay: Duration::from_secs(*package_delay),
             registry: registry.clone(),
-            max_concurrent_per_tier: 1, // Sequential for now
+            max_concurrent_per_tier: *max_concurrent,
             ..Default::default()
         };
         let mut publisher = Publisher::with_config(&workspace, publisher_config)?;
@@ -155,13 +163,17 @@ async fn execute_release(args: &Args, config: &RuntimeConfig) -> Result<()> {
         };
 
         let current_version = version_manager.current_version()?;
-        let bumper = crate::version::VersionBumper::from_version(current_version);
-        let new_version = bumper.bump(version_bump)?;
+        let bumper = crate::version::VersionBumper::from_version(current_version.clone());
+        let new_version = bumper.bump(version_bump.clone())?;
 
-        let mut release_state = ReleaseState::new(new_version.clone(), version_bump, release_config);
+        let mut release_state = ReleaseState::new(new_version.clone(), version_bump.clone(), release_config);
         
         // Initialize state manager
-        let mut state_manager = create_state_manager_at(&config.state_file_path)?;
+        let state_config = StateConfig {
+            create_backups: !no_backup,
+            ..StateConfig::default()
+        };
+        let mut state_manager = create_state_manager_with_config(&config.state_file_path, state_config)?;
 
         if *dry_run {
             config.println("🔍 Performing dry run...");
@@ -192,6 +204,14 @@ async fn execute_release(args: &Args, config: &RuntimeConfig) -> Result<()> {
         // Phase 1: Version Update
         config.println("📝 Updating versions...");
         release_state.set_phase(ReleasePhase::VersionUpdate);
+        state_manager.save_state(&release_state)?;
+
+        // Capture original versions before bumping (for rollback support)
+        let mut original_versions = std::collections::HashMap::new();
+        for (package_name, package_info) in &workspace.packages {
+            original_versions.insert(package_name.clone(), package_info.version.clone());
+        }
+        release_state.set_original_versions(original_versions);
         state_manager.save_state(&release_state)?;
 
         let version_result = version_manager.release_version(version_bump)?;
@@ -239,7 +259,7 @@ async fn execute_release(args: &Args, config: &RuntimeConfig) -> Result<()> {
         let publish_result = publisher.publish_all_packages().await?;
         
         // Update state with publish results
-        for (package_name, package_result) in &publish_result.successful_publishes {
+        for (_package_name, package_result) in &publish_result.successful_publishes {
             release_state.add_published_package(package_result);
         }
         
@@ -324,9 +344,15 @@ async fn execute_rollback(args: &Args, config: &RuntimeConfig) -> Result<()> {
                 release_state.target_version,
                 release_state.current_phase
             ));
+            config.println("WARNING: Rollback will:");
+            config.println("  - Delete local and remote release tags");
+            config.println("  - Reset git HEAD to previous commit");
+            config.println("  - This operation cannot be undone");
             
-            // In a real CLI, you'd prompt for confirmation here
-            // For now, we'll assume confirmation
+            if !prompt_confirmation("Proceed with rollback?")? {
+                config.println("Rollback cancelled");
+                return Ok(());
+            }
         }
 
         release_state.set_phase(ReleasePhase::RollingBack);
@@ -363,13 +389,46 @@ async fn execute_rollback(args: &Args, config: &RuntimeConfig) -> Result<()> {
         }
 
         // Rollback version changes if possible
-        if let Some(version_state) = &release_state.version_state {
+        if let Some(_version_state) = &release_state.version_state {
             config.println("📝 Rolling back version changes...");
-            
-            // This would require implementing version rollback in VersionManager
-            // For now, we'll just warn the user
-            config.warning_println("Version changes cannot be automatically rolled back");
-            config.warning_println("Please manually revert version changes in Cargo.toml files");
+
+            if let Some(original_versions) = &release_state.original_versions {
+                let mut restored_count = 0;
+                let mut failed_packages = Vec::new();
+
+                for (package_name, original_version) in original_versions {
+                    // Find package in workspace to get Cargo.toml path
+                    if let Some(package_info) = workspace.packages.get(package_name) {
+                        match restore_package_version(&package_info.cargo_toml_path, original_version) {
+                            Ok(()) => {
+                                config.verbose_println(&format!("  {} → {}", package_name, original_version));
+                                restored_count += 1;
+                            }
+                            Err(e) => {
+                                config.warning_println(&format!("  Failed to restore {}: {}", package_name, e));
+                                failed_packages.push(package_name.clone());
+                            }
+                        }
+                    } else {
+                        config.warning_println(&format!("  Package {} not found in workspace", package_name));
+                        failed_packages.push(package_name.clone());
+                    }
+                }
+
+                if restored_count > 0 {
+                    config.success_println(&format!("Restored {} package versions", restored_count));
+                }
+
+                if !failed_packages.is_empty() {
+                    config.warning_println(&format!("Failed to restore {} packages: {}",
+                        failed_packages.len(),
+                        failed_packages.join(", ")
+                    ));
+                }
+            } else {
+                config.warning_println("No version history in state file");
+                config.warning_println("You may need to manually revert version changes in Cargo.toml files");
+            }
         }
 
         release_state.set_phase(ReleasePhase::RolledBack);
@@ -392,7 +451,7 @@ async fn execute_rollback(args: &Args, config: &RuntimeConfig) -> Result<()> {
 
 /// Execute resume command
 async fn execute_resume(args: &Args, config: &RuntimeConfig) -> Result<()> {
-    if let Command::Resume { force, reset_to_phase, skip_validation } = &args.command {
+    if let Command::Resume { force, reset_to_phase, skip_validation: _ } = &args.command {
         config.verbose_println("Resuming release operation...");
 
         // Load release state
@@ -473,7 +532,7 @@ async fn execute_resume(args: &Args, config: &RuntimeConfig) -> Result<()> {
 
 /// Execute status command
 async fn execute_status(args: &Args, config: &RuntimeConfig) -> Result<()> {
-    if let Command::Status { detailed, history, json } = &args.command {
+    if let Command::Status { detailed, history: _, json } = &args.command {
         config.verbose_println("Checking release status...");
 
         if !has_active_release_at(&config.state_file_path) {
@@ -534,7 +593,11 @@ async fn execute_cleanup(args: &Args, config: &RuntimeConfig) -> Result<()> {
 
         if !yes {
             config.println("About to clean up release state files");
-            // In a real CLI, you'd prompt for confirmation here
+            
+            if !prompt_confirmation("Proceed with cleanup?")? {
+                config.println("Cleanup cancelled");
+                return Ok(());
+            }
         }
 
         let state_manager = create_state_manager_at(&config.state_file_path)?;
@@ -561,7 +624,7 @@ async fn execute_cleanup(args: &Args, config: &RuntimeConfig) -> Result<()> {
 
 /// Execute validate command
 async fn execute_validate(args: &Args, config: &RuntimeConfig) -> Result<()> {
-    if let Command::Validate { fix, detailed, json } = &args.command {
+    if let Command::Validate { fix: _, detailed, json } = &args.command {
         config.verbose_println("Validating workspace...");
 
         let workspace = WorkspaceInfo::analyze(&config.workspace_path)?;
@@ -626,7 +689,7 @@ async fn execute_preview(args: &Args, config: &RuntimeConfig) -> Result<()> {
             _ => VersionBump::from(bump_type.clone()),
         };
 
-        let preview = version_manager.preview_bump(version_bump)?;
+        let preview = version_manager.preview_bump(version_bump.clone())?;
 
         if *json {
             let json_output = serde_json::to_string_pretty(&preview)
@@ -639,7 +702,7 @@ async fn execute_preview(args: &Args, config: &RuntimeConfig) -> Result<()> {
                 config.println("\nDetailed changes:");
                 config.println(&format!("  Version: {} → {}", 
                     preview.bump_preview.current,
-                    preview.bump_preview.get_version(version_bump).unwrap()
+                    preview.bump_preview.get_version(&version_bump).unwrap()
                 ));
                 
                 config.println(&format!("  Files to modify: {}", preview.update_preview.files_to_modify.len()));
@@ -654,4 +717,52 @@ async fn execute_preview(args: &Args, config: &RuntimeConfig) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Restore a package version in its Cargo.toml file
+fn restore_package_version(cargo_toml_path: &std::path::Path, version: &str) -> Result<()> {
+    let version_parsed = semver::Version::parse(version)
+        .map_err(|e| crate::error::VersionError::ParseFailed {
+            version: version.to_string(),
+            source: e,
+        })?;
+
+    let mut editor = TomlEditor::open(cargo_toml_path)?;
+    editor.update_package_version(&version_parsed)?;
+    editor.save()?;
+
+    Ok(())
+}
+
+/// Prompt user for confirmation (yes/no)
+/// Returns true if user confirms with "yes" or "y" (case-insensitive)
+/// Returns false on EOF, empty input, or any other input
+fn prompt_confirmation(message: &str) -> Result<bool> {
+    use std::io::{self, Write};
+    
+    // Print prompt message and flush to ensure it appears immediately
+    print!("{} [y/N]: ", message);
+    io::stdout().flush()
+        .map_err(|e| ReleaseError::Cli(crate::error::CliError::ExecutionFailed {
+            command: "prompt".to_string(),
+            reason: format!("Failed to flush stdout: {}", e),
+        }))?;
+    
+    // Read user input
+    let mut input = String::new();
+    match io::stdin().read_line(&mut input) {
+        Ok(0) => {
+            // EOF (Ctrl+D) - default to no
+            return Ok(false);
+        }
+        Ok(_) => {
+            // Got input, check if it's a confirmation
+            let trimmed = input.trim().to_lowercase();
+            Ok(trimmed == "yes" || trimmed == "y")
+        }
+        Err(_) => {
+            // Error reading input - default to no
+            Ok(false)
+        }
+    }
 }

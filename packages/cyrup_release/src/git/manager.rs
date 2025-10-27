@@ -51,7 +51,7 @@ impl Default for GitConfig {
 
 /// State tracking for release operations
 #[derive(Debug, Clone)]
-struct ReleaseState {
+pub struct ReleaseState {
     /// Commit created for this release
     release_commit: Option<CommitInfo>,
     /// Tag created for this release

@@ -42,7 +42,8 @@ pub use error::{Result, ReleaseError};
 pub use workspace::{WorkspaceInfo, DependencyGraph};
 pub use version::{VersionBump, VersionManager};
 pub use git::{GitManager, GitOperations};
-pub use publish::{Publisher, PublishOrder};
+pub use publish::Publisher;
+pub use workspace::PublishOrder;
 pub use state::{ReleaseState, StateManager};
 pub use cli::{Command, Args};
 

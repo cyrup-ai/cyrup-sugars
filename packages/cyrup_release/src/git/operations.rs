@@ -4,6 +4,7 @@
 //! including commits, tags, pushes, and rollback capabilities.
 
 use crate::error::{Result, GitError};
+use gix::bstr::ByteSlice;
 use gix::{Repository, ObjectId, ThreadSafeRepository};
 use semver::Version;
 use std::path::Path;
@@ -118,8 +119,6 @@ pub struct RemoteInfo {
     pub fetch_url: String,
     /// Push URL (may be different from fetch)
     pub push_url: String,
-    /// Whether this remote is reachable
-    pub is_reachable: bool,
 }
 
 /// Type of Git reset operation
@@ -161,7 +160,7 @@ impl GitRepository {
         let repo = gix::discover(path.as_ref())
             .map_err(|_| GitError::NotRepository)?;
 
-        let work_dir = repo.work_dir()
+        let work_dir = repo.workdir()
             .ok_or(GitError::NotRepository)?
             .to_path_buf();
 
@@ -178,7 +177,7 @@ impl GitRepository {
                 reason: format!("Failed to initialize repository: {}", e),
             })?;
 
-        let work_dir = repo.work_dir()
+        let work_dir = repo.workdir()
             .ok_or(GitError::NotRepository)?
             .to_path_buf();
 
@@ -194,20 +193,36 @@ impl GitRepository {
     }
 
     /// Convert gix commit to CommitInfo
-    fn commit_to_info(&self, commit: gix::Commit) -> Result<CommitInfo> {
+    fn commit_to_info(&self, commit: gix::Commit<'_>) -> Result<CommitInfo> {
         let hash = commit.id().to_string();
-        let short_hash = commit.id().shorten().to_string();
+        let short_hash = commit.id().shorten()
+            .map(|prefix| prefix.to_string())
+            .unwrap_or_else(|_| hash.clone());
         
         let message = commit.message()
             .map(|m| m.summary().to_string())
-            .unwrap_or_else(|| "No commit message".to_string());
+            .unwrap_or_else(|_| "No commit message".to_string());
 
-        let author = commit.author();
+        let author = commit.author().map_err(|e| GitError::CommitFailed {
+            reason: format!("Failed to get author: {}", e),
+        })?;
         let author_name = author.name.to_string();
         let author_email = author.email.to_string();
         
-        let timestamp = chrono::DateTime::from_timestamp(author.time.seconds, 0)
-            .unwrap_or_else(chrono::Utc::now);
+        // Get commit time (separate from author)
+        let time = commit.time().map_err(|e| GitError::CommitFailed {
+            reason: format!("Failed to get commit time: {}", e),
+        })?;
+        
+        // Convert gix time to chrono DateTime
+        let timestamp = {
+            use chrono::TimeZone;
+            chrono::Utc.timestamp_opt(time.seconds, 0)
+                .single()
+                .ok_or_else(|| GitError::CommitFailed {
+                    reason: format!("Invalid timestamp {} for commit", time.seconds),
+                })?
+        };
 
         let parents: Vec<String> = commit.parent_ids()
             .map(|id| id.to_string())
@@ -227,25 +242,117 @@ impl GitRepository {
     /// Add all changes to the index
     async fn add_all_changes(&self) -> Result<()> {
         let repo = self.gix_repository();
-        let mut index = repo.index()
+        
+        // Open the index
+        let mut index = repo.open_index()
             .map_err(|e| GitError::CommitFailed {
-                reason: format!("Failed to access index: {}", e),
+                reason: format!("Failed to open index: {}", e),
             })?;
-
-        // Add all files in working directory
-        index.add_all(
-            std::iter::empty::<std::path::PathBuf>(),
-            gix::index::entry::Stage::NonConflicted,
-            gix::index::write::Options::default(),
-        ).map_err(|e| GitError::CommitFailed {
-            reason: format!("Failed to add files to index: {}", e),
-        })?;
-
+        
+        // Get workdir path
+        let workdir = repo.workdir()
+            .ok_or_else(|| GitError::CommitFailed {
+                reason: "Cannot add changes in bare repository".to_string(),
+            })?;
+        
+        // Collect entries to process (avoid borrowing issues)
+        let entries_to_process: Vec<_> = index.entries()
+            .iter()
+            .filter_map(|entry| {
+                // Only process valid tree entries (filters out gitlinks, etc.)
+                if entry.mode.to_tree_entry_mode().is_some() {
+                    let entry_path = entry.path(&index).to_owned();
+                    let entry_id = entry.id;
+                    Some((entry_path, entry_id))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        
+        let mut changed = false;
+        
+        // Process each tracked file
+        for (entry_path, old_id) in entries_to_process {
+            // Build full path
+            let path_str = std::str::from_utf8(entry_path.as_bytes())
+                .map_err(|_| GitError::CommitFailed {
+                    reason: "Invalid UTF-8 in path".to_string(),
+                })?;
+            let full_path = workdir.join(std::path::Path::new(path_str));
+            
+            // Skip non-existent or non-file entries
+            if !full_path.exists() || !full_path.is_file() {
+                continue;
+            }
+            
+            // Read file contents
+            let contents = std::fs::read(&full_path)
+                .map_err(|e| GitError::CommitFailed {
+                    reason: format!("Failed to read {}: {}", full_path.display(), e),
+                })?;
+            
+            // Write blob and get ID
+            let blob_id = repo.write_blob(&contents)
+                .map_err(|e| GitError::CommitFailed {
+                    reason: format!("Failed to write blob: {}", e),
+                })?
+                .detach();
+            
+            // Only update if content changed
+            if blob_id != old_id {
+                // Get file metadata
+                let metadata = gix::index::fs::Metadata::from_path_no_follow(&full_path)
+                    .map_err(|e| GitError::CommitFailed {
+                        reason: format!("Failed to get metadata: {}", e),
+                    })?;
+                
+                // Determine mode
+                use gix::index::entry::Mode;
+                let mode = if metadata.is_executable() {
+                    Mode::FILE_EXECUTABLE
+                } else {
+                    Mode::FILE
+                };
+                
+                // Create stat
+                use gix::index::entry::Stat;
+                let stat = Stat::from_fs(&metadata)
+                    .map_err(|e| GitError::CommitFailed {
+                        reason: format!("Failed to create stat: {}", e),
+                    })?;
+                
+                // Add to index
+                use gix::index::entry::Flags;
+                index.dangerously_push_entry(
+                    stat,
+                    blob_id,
+                    Flags::empty(),
+                    mode,
+                    entry_path.as_ref(),
+                );
+                changed = true;
+            }
+        }
+        
+        // If we modified the index, write it to disk
+        if changed {
+            // CRITICAL: Sort entries to maintain index invariants
+            index.sort_entries();
+            
+            // Write index with proper locking and checksum
+            use gix::index::write::Options;
+            index.write(Options::default())
+                .map_err(|e| GitError::CommitFailed {
+                    reason: format!("Failed to write index: {}", e),
+                })?;
+        }
+        
         Ok(())
     }
 
     /// Create signature for commits
-    fn create_signature(&self) -> Result<gix::actor::SignatureRef<'static>> {
+    fn create_signature(&self) -> Result<gix::actor::Signature> {
         let repo = self.gix_repository();
         let config = repo.config_snapshot();
         
@@ -265,158 +372,311 @@ impl GitRepository {
             time: gix::date::Time::now_local_or_utc(),
         };
 
-        Ok(signature.to_ref())
+        Ok(signature)
     }
 }
 
 #[async_trait::async_trait]
 impl GitOperations for GitRepository {
     async fn create_release_commit(&self, version: &Version, message: Option<String>) -> Result<CommitInfo> {
+        // Add all changes to index first
+        self.add_all_changes().await?;
+        
         let repo = self.gix_repository();
         
-        // Add all changes to index
-        self.add_all_changes().await?;
-
-        // Create commit message
-        let commit_message = message.unwrap_or_else(|| {
-            format!("release: v{}", version)
-        });
-
-        // Create signature
-        let signature = self.create_signature()?;
-
-        // Get current HEAD
-        let head = repo.head()
+        // Re-open index for tree building
+        let index = repo.open_index()
             .map_err(|e| GitError::CommitFailed {
-                reason: format!("Failed to get HEAD: {}", e),
+                reason: format!("Failed to open index: {}", e),
             })?;
-
-        let parent_commit = head.peel_to_commit_in_place()
-            .map_err(|e| GitError::CommitFailed {
-                reason: format!("Failed to get parent commit: {}", e),
-            })?;
-
-        // Get index tree
-        let index = repo.index()
-            .map_err(|e| GitError::CommitFailed {
-                reason: format!("Failed to access index: {}", e),
-            })?;
-
-        let tree_id = index.write(gix::index::write::Options::default())
-            .map_err(|e| GitError::CommitFailed {
-                reason: format!("Failed to write index: {}", e),
-            })?;
-
-        // Create commit
-        let commit_id = repo.commit(
-            Some(&head.name().as_bstr()),
-            &signature,
-            &signature,
+        
+        // Create tree editor to build hierarchical tree structure
+        let mut editor = gix::objs::tree::Editor::new(
+            gix::objs::Tree::empty(),
+            &repo.objects,
+            repo.object_hash(),
+        );
+        
+        // Add each index entry with path components to build hierarchy
+        for entry in index.entries() {
+            if let Some(tree_mode) = entry.mode.to_tree_entry_mode() {
+                let path = entry.path(&index);
+                // Split path into components for hierarchical tree building
+                let components: Vec<&gix::bstr::BStr> = path
+                    .split(|&b| b == b'/')
+                    .map(std::convert::AsRef::as_ref)
+                    .collect();
+                
+                // Convert tree::EntryMode to EntryKind
+                let kind = tree_mode.kind();
+                
+                editor.upsert(components, kind, entry.id)
+                    .map_err(|e| GitError::CommitFailed {
+                        reason: format!("Failed to upsert tree entry: {}", e),
+                    })?;
+            }
+        }
+        
+        // Write all tree objects and get root tree ID
+        let tree_id = editor.write(|tree| {
+            repo.write_object(tree)
+                .map(gix::Id::detach)
+                .map_err(|e| GitError::CommitFailed {
+                    reason: format!("Failed to write tree: {}", e),
+                })
+        })
+        .map_err(|e| match e {
+            GitError::CommitFailed { reason } => GitError::CommitFailed { reason },
+            _ => GitError::CommitFailed {
+                reason: format!("Failed to write tree: {}", e),
+            },
+        })?;
+        
+        // Get current HEAD commit ID for parents
+        let head_commit_id = repo.head_id().ok();
+        let parents: Vec<gix::ObjectId> = head_commit_id
+            .into_iter()
+            .map(gix::Id::detach)
+            .collect();
+        
+        // Create author and committer signatures
+        let author_sig = self.create_signature()?;
+        let committer_sig = author_sig.clone();
+        
+        // Build commit message
+        let commit_message = message.unwrap_or_else(|| format!("release: v{}", version));
+        
+        // Create time buffers for signature conversion
+        use gix::date::parse::TimeBuf;
+        let mut committer_time_buf = TimeBuf::default();
+        let mut author_time_buf = TimeBuf::default();
+        
+        // Create commit using commit_as
+        let commit_id = repo.commit_as(
+            committer_sig.to_ref(&mut committer_time_buf),
+            author_sig.to_ref(&mut author_time_buf),
+            "HEAD",
             &commit_message,
             tree_id,
-            [parent_commit.id()],
-        ).map_err(|e| GitError::CommitFailed {
+            parents,
+        )
+        .map_err(|e| GitError::CommitFailed {
             reason: format!("Failed to create commit: {}", e),
         })?;
-
-        // Get the created commit
+        
+        // Convert to CommitInfo
         let commit = repo.find_commit(commit_id)
             .map_err(|e| GitError::CommitFailed {
                 reason: format!("Failed to find created commit: {}", e),
             })?;
-
+        
         self.commit_to_info(commit)
     }
 
     async fn create_version_tag(&self, version: &Version, message: Option<String>) -> Result<TagInfo> {
         let repo = self.gix_repository();
         let tag_name = format!("v{}", version);
-
-        // Check if tag already exists
-        if self.tag_exists(&tag_name).await? {
-            return Err(GitError::TagExists { tag: tag_name }.into());
-        }
-
-        // Get current HEAD commit
-        let head = repo.head()
+        
+        // Get HEAD commit ID as target
+        let target = repo.head_id()
             .map_err(|e| GitError::CommitFailed {
-                reason: format!("Failed to get HEAD: {}", e),
-            })?;
-
-        let target_commit = head.peel_to_commit_in_place()
-            .map_err(|e| GitError::CommitFailed {
-                reason: format!("Failed to get target commit: {}", e),
-            })?;
-
-        let target_id = target_commit.id();
-
-        // Create tag message
-        let tag_message = message.unwrap_or_else(|| {
-            format!("Release v{}", version)
-        });
-
+                reason: format!("Failed to get HEAD commit: {}", e),
+            })?
+            .detach();
+        
         // Create signature
         let signature = self.create_signature()?;
-
+        
+        // Build tag message
+        let tag_message = message.unwrap_or_else(|| format!("Release v{}", version));
+        
+        // Convert signature time to string for SignatureRef
+        use gix::bstr::ByteSlice;
+        let time_str = signature.time.to_string();
+        let sig_ref = gix::actor::SignatureRef {
+            name: signature.name.as_bstr(),
+            email: signature.email.as_bstr(),
+            time: &time_str,
+        };
+        
         // Create annotated tag
-        let tag_ref_name = format!("refs/tags/{}", tag_name);
-        let tag_id = repo.tag(
+        repo.tag(
             &tag_name,
-            target_id,
-            gix::object::Kind::Commit,
-            Some(&signature),
+            target,
+            gix::objs::Kind::Commit,
+            Some(sig_ref),
             &tag_message,
             gix::refs::transaction::PreviousValue::MustNotExist,
-        ).map_err(|e| GitError::CommitFailed {
-            reason: format!("Failed to create tag: {}", e),
+        )
+        .map_err(|e| GitError::CommitFailed {
+            reason: format!("Failed to create tag {}: {}", tag_name, e),
         })?;
-
+        
+        // Get commit for timestamp
+        let commit = repo.find_commit(target)
+            .map_err(|e| GitError::CommitFailed {
+                reason: format!("Failed to find target commit for tag {}: {}", tag_name, e),
+            })?;
+        
+        let commit_time = commit.time()
+            .map_err(|e| GitError::CommitFailed {
+                reason: format!("Failed to get commit time for tag {}: {}", tag_name, e),
+            })?;
+        
+        use chrono::TimeZone;
+        let timestamp = chrono::Utc.timestamp_opt(commit_time.seconds, 0)
+            .single()
+            .unwrap_or_else(chrono::Utc::now);
+        
         Ok(TagInfo {
             name: tag_name,
             message: Some(tag_message),
-            target_commit: target_id.to_string(),
-            timestamp: chrono::Utc::now(),
+            target_commit: target.to_string(),
+            timestamp,
             is_annotated: true,
         })
     }
 
     async fn push_to_remote(&self, remote_name: Option<&str>, push_tags: bool) -> Result<PushInfo> {
-        let repo = self.gix_repository();
-        let remote_name = remote_name.unwrap_or("origin");
-
-        // Get remote
-        let remote = repo.find_remote(remote_name)
-            .map_err(|e| GitError::RemoteOperationFailed {
-                operation: "find remote".to_string(),
-                reason: format!("Remote '{}' not found: {}", remote_name, e),
-            })?;
-
+        // Note: This uses the git command-line tool rather than gix library calls
+        // because gix does not yet support push operations
+        
+        let remote = remote_name.unwrap_or("origin");
         let mut warnings = Vec::new();
-        let mut commits_pushed = 0;
-        let mut tags_pushed = 0;
-
-        // Push current branch
-        match self.push_current_branch(&remote).await {
-            Ok(count) => commits_pushed = count,
-            Err(e) => {
-                return Err(GitError::PushFailed {
-                    reason: format!("Failed to push commits: {}", e),
-                }.into());
-            }
-        }
-
-        // Push tags if requested
+        
+        // Get workdir
+        let work_dir = self.work_dir.clone();
+        
+        // Build git push command
+        let mut cmd = tokio::process::Command::new("git");
+        cmd.current_dir(&work_dir);
+        cmd.arg("push");
+        
+        // Prevent credential prompts from hanging
+        cmd.env("GIT_TERMINAL_PROMPT", "0");
+        
+        // Force English output for consistent parsing
+        cmd.env("LC_ALL", "C");
+        cmd.env("LANG", "C");
+        
+        // Capture stdout and stderr
+        cmd.stdout(std::process::Stdio::piped());
+        cmd.stderr(std::process::Stdio::piped());
+        
+        // Add --tags if requested
         if push_tags {
-            match self.push_tags(&remote).await {
-                Ok(count) => tags_pushed = count,
-                Err(e) => {
-                    warnings.push(format!("Failed to push tags: {}", e));
+            cmd.arg("--tags");
+        }
+        
+        // Add remote name
+        cmd.arg(remote);
+        
+        // Spawn and wait with timeout
+        let timeout_duration = tokio::time::Duration::from_secs(300);
+        let mut child = cmd.spawn()
+            .map_err(|e| GitError::RemoteOperationFailed {
+                operation: "push".to_string(),
+                reason: format!("Failed to spawn git command: {}", e),
+            })?;
+        
+        let status = tokio::select! {
+            result = child.wait() => {
+                result.map_err(|e| GitError::RemoteOperationFailed {
+                    operation: "push".to_string(),
+                    reason: format!("Failed to wait for git command: {}", e),
+                })?
+            }
+            () = tokio::time::sleep(timeout_duration) => {
+                let _ = child.kill().await;
+                return Err(crate::error::ReleaseError::Git(GitError::RemoteOperationFailed {
+                    operation: "push".to_string(),
+                    reason: "Push operation timed out after 300 seconds".to_string(),
+                }));
+            }
+        };
+        
+        // Read stderr for any messages
+        if let Some(mut stderr) = child.stderr.take() {
+            use tokio::io::AsyncReadExt;
+            let mut stderr_data = Vec::new();
+            let _ = stderr.read_to_end(&mut stderr_data).await;
+            if !stderr_data.is_empty() {
+                if let Ok(stderr_str) = String::from_utf8(stderr_data) {
+                    if !stderr_str.trim().is_empty() {
+                        warnings.push(stderr_str);
+                    }
                 }
             }
         }
+        
+        if !status.success() {
+            return Err(crate::error::ReleaseError::Git(GitError::RemoteOperationFailed {
+                operation: "push".to_string(),
+                reason: format!("Push failed with exit code {:?}", status.code()),
+            }));
+        }
+
+        // Parse git output to count actual refs pushed
+        let mut stdout_data = Vec::new();
+        if let Some(mut stdout) = child.stdout.take() {
+            use tokio::io::AsyncReadExt;
+            let _ = stdout.read_to_end(&mut stdout_data).await;
+        }
+
+        // Combine stdout and stderr for parsing (git sends push info to stderr)
+        let combined = format!(
+            "{}\n{}",
+            String::from_utf8_lossy(&stdout_data),
+            warnings.join("\n")
+        );
+
+        // Count successful ref updates by parsing output lines
+        // Lines with " -> " indicate ref updates (branches/tags)
+        let refs_pushed = combined
+            .lines()
+            .filter(|line| {
+                let trimmed = line.trim_start();
+                if !trimmed.contains(" -> ") {
+                    return false;
+                }
+                // Exclude errors and rejections
+                if trimmed.starts_with('!')
+                    || trimmed.starts_with("error:")
+                    || trimmed.contains("[rejected]")
+                {
+                    return false;
+                }
+                // Match successful update patterns:
+                // - "abc123..def456 main -> main" (fast-forward)
+                // - " * [new branch] feature -> feature" (new branch)
+                // - " * [new tag] v1.0.0 -> v1.0.0" (new tag)
+                // - "+ abc123...def456 main -> main (forced)" (force push)
+                trimmed.starts_with(|c: char| c.is_ascii_hexdigit())
+                    || trimmed.starts_with("* [new")
+                    || trimmed.starts_with('+')
+            })
+            .count();
+
+        // Estimate split between commits and tags
+        // If push_tags was specified, count lines with "tag" in them
+        let (commits_pushed, tags_pushed) = if push_tags && refs_pushed > 0 {
+            let tag_count = combined
+                .lines()
+                .filter(|line| {
+                    let trimmed = line.trim_start();
+                    trimmed.contains(" -> ")
+                        && trimmed.contains("tag")
+                        && !trimmed.starts_with('!')
+                        && !trimmed.contains("[rejected]")
+                })
+                .count();
+            (refs_pushed.saturating_sub(tag_count), tag_count)
+        } else {
+            (refs_pushed, 0)
+        };
 
         Ok(PushInfo {
-            remote_name: remote_name.to_string(),
+            remote_name: remote.to_string(),
             commits_pushed,
             tags_pushed,
             warnings,
@@ -426,41 +686,26 @@ impl GitOperations for GitRepository {
     async fn is_working_directory_clean(&self) -> Result<bool> {
         let repo = self.gix_repository();
         
-        let status = repo.status(gix::status::Platform::default())
+        // Use is_dirty() which is the proper API for checking if repo has changes
+        let is_dirty = repo.is_dirty()
             .map_err(|e| GitError::RemoteOperationFailed {
                 operation: "status check".to_string(),
                 reason: e.to_string(),
             })?;
-
-        // Check for any modifications
-        for entry in status {
-            let entry = entry.map_err(|e| GitError::RemoteOperationFailed {
-                operation: "status iteration".to_string(),
-                reason: e.to_string(),
-            })?;
-
-            if entry.status().is_modified() || 
-               entry.status().is_added() || 
-               entry.status().is_deleted() ||
-               entry.status().is_renamed() ||
-               entry.status().is_copied() {
-                return Ok(false);
-            }
-        }
-
-        Ok(true)
+        
+        Ok(!is_dirty)
     }
 
     async fn get_current_branch(&self) -> Result<BranchInfo> {
         let repo = self.gix_repository();
         
-        let head = repo.head()
+        let mut head = repo.head()
             .map_err(|e| GitError::BranchOperationFailed {
                 reason: format!("Failed to get HEAD: {}", e),
             })?;
 
         let branch_name = head.referent_name()
-            .and_then(|name| name.shorten().to_str())
+            .and_then(|name| name.shorten().to_str().ok())
             .map(|s| s.to_string())
             .unwrap_or_else(|| "detached HEAD".to_string());
 
@@ -471,10 +716,8 @@ impl GitOperations for GitRepository {
 
         let commit_hash = commit.id().to_string();
 
-        // TODO: Implement upstream tracking and ahead/behind counts
-        let upstream = None;
-        let ahead_count = None;
-        let behind_count = None;
+        // Get upstream tracking information and ahead/behind counts
+        let (upstream, ahead_count, behind_count) = self.get_upstream_info(&repo, &mut head)?;
 
         Ok(BranchInfo {
             name: branch_name,
@@ -489,54 +732,88 @@ impl GitOperations for GitRepository {
     async fn reset_to_commit(&self, commit_id: &str, reset_type: ResetType) -> Result<()> {
         let repo = self.gix_repository();
         
-        // Parse commit ID
-        let target_id = repo.rev_parse_single(commit_id)
+        // Resolve target commit ID
+        use gix::bstr::ByteSlice;
+        let target_id = repo.rev_parse_single(commit_id.as_bytes().as_bstr())
             .map_err(|e| GitError::BranchOperationFailed {
                 reason: format!("Invalid commit ID '{}': {}", commit_id, e),
             })?;
-
+        
         // Get target commit
-        let target_commit = repo.find_commit(target_id)
+        let target_commit = repo.find_object(target_id)
             .map_err(|e| GitError::BranchOperationFailed {
-                reason: format!("Failed to find commit '{}': {}", commit_id, e),
+                reason: format!("Failed to find commit: {}", e),
+            })?
+            .try_into_commit()
+            .map_err(|_| GitError::BranchOperationFailed {
+                reason: "Target is not a commit".to_string(),
             })?;
-
-        // Perform reset based on type
-        match reset_type {
-            ResetType::Soft => {
-                // Move HEAD but keep index and working directory
-                self.reset_head_to_commit(&repo, target_commit.id()).await?;
-            }
-            ResetType::Mixed => {
-                // Move HEAD and reset index, keep working directory
-                self.reset_head_to_commit(&repo, target_commit.id()).await?;
-                self.reset_index_to_commit(&repo, &target_commit).await?;
-            }
-            ResetType::Hard => {
-                // Move HEAD, reset index, and reset working directory
-                self.reset_head_to_commit(&repo, target_commit.id()).await?;
-                self.reset_index_to_commit(&repo, &target_commit).await?;
-                self.reset_working_directory(&repo, &target_commit).await?;
-            }
+        
+        let target_obj_id = target_id.detach();
+        
+        // Execute reset in safe order: working directory -> index -> HEAD
+        // This minimizes risk of inconsistent state
+        
+        // Step 1: Reset working directory (if Hard reset)
+        if reset_type == ResetType::Hard {
+            self.reset_working_directory(&repo, &target_commit)?;
         }
-
+        
+        // Step 2: Reset index (if Mixed or Hard reset)
+        if reset_type == ResetType::Mixed || reset_type == ResetType::Hard {
+            self.reset_index_to_commit(&repo, &target_commit)?;
+        }
+        
+        // Step 3: Move HEAD (all reset types)
+        self.reset_head_to_commit(&repo, target_obj_id, commit_id)?;
+        
         Ok(())
     }
 
     async fn delete_tag(&self, tag_name: &str, delete_remote: bool) -> Result<()> {
         let repo = self.gix_repository();
-        
-        // Delete local tag
         let tag_ref_name = format!("refs/tags/{}", tag_name);
-        repo.refs.delete(&tag_ref_name)
-            .map_err(|e| GitError::BranchOperationFailed {
-                reason: format!("Failed to delete local tag '{}': {}", tag_name, e),
+        
+        // Check if tag exists
+        use gix::bstr::ByteSlice;
+        repo.refs.find(tag_ref_name.as_bytes().as_bstr())
+            .map_err(|_| GitError::BranchOperationFailed {
+                reason: format!("Tag '{}' not found", tag_name),
             })?;
-
-        // Delete remote tag if requested
+        
+        // Delete the tag using transaction API
+        let ref_name = gix::refs::FullName::try_from(tag_ref_name.as_bytes().as_bstr())
+            .map_err(|e| GitError::BranchOperationFailed {
+                reason: format!("Invalid ref name for tag '{}': {}", tag_name, e),
+            })?;
+        
+        let edit = gix::refs::transaction::RefEdit {
+            change: gix::refs::transaction::Change::Delete {
+                expected: gix::refs::transaction::PreviousValue::Any,
+                log: gix::refs::transaction::RefLog::AndReference,
+            },
+            name: ref_name,
+            deref: false,
+        };
+        
+        repo.refs.transaction()
+            .prepare(
+                vec![edit],
+                gix::lock::acquire::Fail::Immediately,
+                gix::lock::acquire::Fail::Immediately,
+            )
+            .map_err(|e| GitError::BranchOperationFailed {
+                reason: format!("Failed to prepare tag deletion transaction for '{}': {}", tag_name, e),
+            })?
+            .commit(None)
+            .map_err(|e| GitError::BranchOperationFailed {
+                reason: format!("Failed to commit tag deletion transaction for '{}': {}", tag_name, e),
+            })?;
+        
+        // Handle remote tag deletion if requested
         if delete_remote {
-            // TODO: Implement remote tag deletion
-            // This requires push with refspec `:refs/tags/{tag_name}`
+            // Remote deletion requires git CLI since gix doesn't support push operations
+            self.delete_remote_tag_cli(tag_name).await?;
         }
 
         Ok(())
@@ -597,7 +874,7 @@ impl GitOperations for GitRepository {
         let mut remotes = Vec::new();
 
         for remote_name in repo.remote_names() {
-            if let Ok(remote) = repo.find_remote(&remote_name) {
+            if let Ok(remote) = repo.find_remote(&*remote_name) {
                 let fetch_url = remote.url(gix::remote::Direction::Fetch)
                     .map(|url| url.to_string())
                     .unwrap_or_else(|| "unknown".to_string());
@@ -606,14 +883,10 @@ impl GitOperations for GitRepository {
                     .map(|url| url.to_string())
                     .unwrap_or_else(|| fetch_url.clone());
 
-                // TODO: Implement reachability check
-                let is_reachable = true;
-
                 remotes.push(RemoteInfo {
                     name: remote_name.to_string(),
                     fetch_url,
                     push_url,
-                    is_reachable,
                 });
             }
         }
@@ -671,54 +944,376 @@ impl GitOperations for GitRepository {
 }
 
 impl GitRepository {
-    /// Helper method to push current branch
-    async fn push_current_branch(&self, remote: &gix::Remote) -> Result<usize> {
-        // TODO: Implement actual push operation
-        // This is a simplified placeholder
-        Ok(1)
-    }
-
-    /// Helper method to push tags
-    async fn push_tags(&self, remote: &gix::Remote) -> Result<usize> {
-        // TODO: Implement tag pushing
-        // This is a simplified placeholder
-        Ok(0)
-    }
-
     /// Reset HEAD to specific commit
-    async fn reset_head_to_commit(&self, repo: &Repository, target_id: ObjectId) -> Result<()> {
+    fn reset_head_to_commit(&self, repo: &Repository, target_id: ObjectId, target_ref: &str) -> Result<()> {
         let head = repo.head()
             .map_err(|e| GitError::BranchOperationFailed {
                 reason: format!("Failed to get HEAD: {}", e),
             })?;
-
-        // Update HEAD reference
-        repo.refs.transaction()
-            .prepare(
-                head.name(),
-                gix::refs::transaction::Change::Update {
-                    expected: gix::refs::transaction::PreviousValue::Any,
-                    new: gix::refs::Target::Peeled(target_id),
+        
+        // Check if HEAD is symbolic (on a branch) or detached
+        let is_symbolic = matches!(
+            head.kind,
+            gix::head::Kind::Symbolic(_) | gix::head::Kind::Unborn(_)
+        );
+        
+        if is_symbolic {
+            // Symbolic HEAD: Update the branch reference that HEAD points to
+            use gix::bstr::ByteSlice;
+            let head_name = head.name().as_bstr();
+            let ref_name = gix::refs::FullName::try_from(head_name.as_bstr())
+                .map_err(|e| GitError::BranchOperationFailed {
+                    reason: format!("Invalid ref name: {}", e),
+                })?;
+            
+            use gix::refs::Target;
+            use gix::refs::transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog};
+            
+            repo.edit_reference(RefEdit {
+                change: Change::Update {
+                    log: LogChange {
+                        mode: RefLog::AndReference,
+                        force_create_reflog: false,
+                        message: format!("reset: moving to {}", target_ref).into(),
+                    },
+                    expected: PreviousValue::Any,
+                    new: Target::Object(target_id),
                 },
-                gix::refs::transaction::RefLog::AndReference,
+                name: ref_name,
+                deref: true,
+            })
+            .map_err(|e| GitError::BranchOperationFailed {
+                reason: format!("Failed to update reference: {}", e),
+            })?;
+        } else {
+            // Detached HEAD: Update HEAD directly
+            use gix::refs::transaction::PreviousValue;
+            
+            repo.reference(
+                "HEAD",
+                target_id,
+                PreviousValue::Any,
+                format!("reset: moving to {}", target_ref),
             )
-            .commit()
             .map_err(|e| GitError::BranchOperationFailed {
                 reason: format!("Failed to update HEAD: {}", e),
             })?;
-
+        }
+        
         Ok(())
     }
 
     /// Reset index to specific commit
-    async fn reset_index_to_commit(&self, repo: &Repository, target_commit: &gix::Commit) -> Result<()> {
-        // TODO: Implement index reset
+    fn reset_index_to_commit(&self, repo: &Repository, target_commit: &gix::Commit<'_>) -> Result<()> {
+        // Get tree ID from target commit
+        let tree_id = target_commit.tree_id()
+            .map_err(|e| GitError::CommitFailed {
+                reason: format!("Failed to get tree ID: {}", e),
+            })?;
+        
+        // Create new index from target tree
+        let mut new_index = repo.index_from_tree(&tree_id)
+            .map_err(|e| GitError::CommitFailed {
+                reason: format!("Failed to create index from tree: {}", e),
+            })?;
+        
+        // Write new index to disk with proper locking and checksum
+        use gix::index::write::Options;
+        new_index.write(Options::default())
+            .map_err(|e| GitError::CommitFailed {
+                reason: format!("Failed to write index: {}", e),
+            })?;
+        
         Ok(())
     }
 
     /// Reset working directory to specific commit
-    async fn reset_working_directory(&self, repo: &Repository, target_commit: &gix::Commit) -> Result<()> {
-        // TODO: Implement working directory reset
+    fn reset_working_directory(&self, repo: &Repository, target_commit: &gix::Commit<'_>) -> Result<()> {
+        // Get tree ID from target commit
+        let tree_id = target_commit.tree_id()
+            .map_err(|e| GitError::CommitFailed {
+                reason: format!("Failed to get tree ID: {}", e),
+            })?;
+        
+        // Create index from target tree
+        let mut index = repo.index_from_tree(&tree_id)
+            .map_err(|e| GitError::CommitFailed {
+                reason: format!("Failed to create index from tree: {}", e),
+            })?;
+        
+        // Get worktree path
+        let worktree = repo.worktree()
+            .ok_or_else(|| GitError::CommitFailed {
+                reason: "Cannot reset working directory in bare repository".to_string(),
+            })?;
+        let worktree_path = worktree.base().to_owned();
+        
+        // Configure checkout options for force overwrite
+        let mut checkout_opts = repo.checkout_options(
+            gix::worktree::stack::state::attributes::Source::WorktreeThenIdMapping
+        )
+        .map_err(|e| GitError::CommitFailed {
+            reason: format!("Failed to create checkout options: {}", e),
+        })?;
+        
+        // Force overwrite all files (hard reset behavior)
+        checkout_opts.overwrite_existing = true;
+        checkout_opts.destination_is_initially_empty = false;
+        
+        // Perform the checkout
+        let cancel_token = std::sync::atomic::AtomicBool::new(false);
+        let outcome = gix::worktree::state::checkout(
+            &mut index,
+            &worktree_path,
+            repo.objects.clone().into_arc()
+                .map_err(|e| GitError::CommitFailed {
+                    reason: format!("Failed to get object store: {}", e),
+                })?,
+            &gix::progress::Discard,
+            &gix::progress::Discard,
+            &cancel_token,
+            checkout_opts,
+        )
+        .map_err(|e| GitError::CommitFailed {
+            reason: format!("Failed to checkout: {}", e),
+        })?;
+        
+        // Check for errors
+        if !outcome.errors.is_empty() {
+            let error_details: Vec<String> = outcome.errors
+                .iter()
+                .take(5)
+                .map(|err| {
+                    let path_str = std::str::from_utf8(err.path.as_ref())
+                        .unwrap_or("<invalid utf8>");
+                    format!("{}: {}", path_str, err.error)
+                })
+                .collect();
+            
+            return Err(crate::error::ReleaseError::Git(GitError::CommitFailed {
+                reason: format!("Reset failed with {} error(s): {}", 
+                    outcome.errors.len(), 
+                    error_details.join(", ")
+                ),
+            }));
+        }
+        
+        Ok(())
+    }
+}
+
+// Private helper methods for GitRepository
+impl GitRepository {
+    /// Get upstream tracking information for current branch
+    fn get_upstream_info(
+        &self,
+        repo: &gix::Repository,
+        head: &mut gix::Head<'_>,
+    ) -> Result<(Option<String>, Option<usize>, Option<usize>)> {
+        // Try to get upstream branch from config
+        let upstream = if let Some(branch_ref) = head.referent_name() {
+            let branch_name = branch_ref.shorten();
+            let config = repo.config_snapshot();
+            let branch_section = format!("branch.{branch_name}");
+
+            let remote_name = config
+                .string(format!("{branch_section}.remote"))
+                .map(|s| s.to_string());
+
+            let merge_ref = config
+                .string(format!("{branch_section}.merge"))
+                .map(|s| s.to_string());
+
+            if let (Some(remote), Some(merge)) = (remote_name, merge_ref) {
+                Some(format!(
+                    "{}/{}",
+                    remote,
+                    merge.trim_start_matches("refs/heads/")
+                ))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Calculate ahead/behind counts if upstream exists
+        let (ahead_count, behind_count) = if let Some(ref upstream_ref) = upstream {
+            let local_commit_id = match head.peel_to_commit_in_place() {
+                Ok(commit) => commit.id().detach(),
+                Err(_) => return Ok((upstream, None, None)),
+            };
+
+            self.calculate_ahead_behind(repo, local_commit_id, upstream_ref)
+                .unwrap_or((None, None))
+        } else {
+            (None, None)
+        };
+
+        Ok((upstream, ahead_count, behind_count))
+    }
+
+    /// Calculate ahead/behind commit counts between local and upstream
+    fn calculate_ahead_behind(
+        &self,
+        repo: &gix::Repository,
+        local_commit_id: gix::ObjectId,
+        upstream_ref: &str,
+    ) -> Result<(Option<usize>, Option<usize>)> {
+        // Convert upstream ref to full path (e.g., "origin/main" -> "refs/remotes/origin/main")
+        let upstream_ref_path = if upstream_ref.starts_with("refs/") {
+            upstream_ref.to_string()
+        } else {
+            format!("refs/remotes/{upstream_ref}")
+        };
+
+        // Find and peel upstream reference to get commit ID
+        let upstream_commit_id = match repo.try_find_reference(&upstream_ref_path) {
+            Ok(Some(mut r)) => {
+                match r.peel_to_id_in_place() {
+                    Ok(id) => id.detach(),
+                    Err(_) => return Ok((None, None)),
+                }
+            }
+            Ok(None) | Err(_) => return Ok((None, None)), // Upstream doesn't exist
+        };
+
+        // Same commit = no divergence
+        if local_commit_id == upstream_commit_id {
+            return Ok((Some(0), Some(0)));
+        }
+
+        // Find merge base (common ancestor)
+        let mut graph = repo.revision_graph(None);
+        let merge_base_id = match repo.merge_base_with_graph(
+            local_commit_id,
+            upstream_commit_id,
+            &mut graph,
+        ) {
+            Ok(base_id) => base_id.detach(),
+            Err(_) => return Ok((None, None)), // No common ancestor
+        };
+
+        // Count commits between merge base and each branch
+        let ahead_count = self.count_commits_between(repo, merge_base_id, local_commit_id)?;
+        let behind_count = self.count_commits_between(repo, merge_base_id, upstream_commit_id)?;
+
+        Ok((Some(ahead_count), Some(behind_count)))
+    }
+
+    /// Count commits between two points in commit graph
+    fn count_commits_between(
+        &self,
+        repo: &gix::Repository,
+        from: gix::ObjectId,
+        to: gix::ObjectId,
+    ) -> Result<usize> {
+        if from == to {
+            return Ok(0);
+        }
+
+        // Collect all commits reachable from 'from'
+        let mut from_commits = std::collections::HashSet::new();
+        let from_walker = repo.rev_walk([from])
+            .all()
+            .map_err(|e| GitError::BranchOperationFailed {
+                reason: format!("Failed to walk commits from base: {}", e),
+            })?;
+
+        for commit_result in from_walker {
+            match commit_result {
+                Ok(info) => {
+                    from_commits.insert(info.id);
+                }
+                Err(e) => {
+                    return Err(crate::error::ReleaseError::Git(GitError::BranchOperationFailed {
+                        reason: format!("Error walking commit graph: {}", e),
+                    }))
+                }
+            }
+        }
+
+        // Count commits reachable from 'to' that are NOT in from_commits
+        let mut count = 0;
+        let to_walker = repo.rev_walk([to])
+            .all()
+            .map_err(|e| GitError::BranchOperationFailed {
+                reason: format!("Failed to walk commits to target: {}", e),
+            })?;
+
+        for commit_result in to_walker {
+            match commit_result {
+                Ok(info) => {
+                    if !from_commits.contains(&info.id) {
+                        count += 1;
+                    }
+                }
+                Err(e) => {
+                    return Err(crate::error::ReleaseError::Git(GitError::BranchOperationFailed {
+                        reason: format!("Error walking commit graph: {}", e),
+                    }))
+                }
+            }
+        }
+
+        Ok(count)
+    }
+
+    /// Delete tag from remote using git CLI
+    async fn delete_remote_tag_cli(&self, tag_name: &str) -> Result<()> {
+        let work_dir = self.work_dir.clone();
+        let timeout_duration = tokio::time::Duration::from_secs(300);
+
+        // Build git push command to delete remote tag
+        let mut cmd = tokio::process::Command::new("git");
+        cmd.current_dir(&work_dir);
+        cmd.env("GIT_TERMINAL_PROMPT", "0"); // Prevent credential prompts
+        cmd.env("LC_ALL", "C");
+        cmd.env("LANG", "C");
+        cmd.arg("push");
+        cmd.arg("origin"); // Use default remote
+        cmd.arg("--delete");
+        cmd.arg(format!("refs/tags/{}", tag_name));
+        cmd.stdout(std::process::Stdio::piped());
+        cmd.stderr(std::process::Stdio::piped());
+
+        // Spawn and wait with timeout
+        let mut child = cmd.spawn()
+            .map_err(|e| GitError::RemoteOperationFailed {
+                operation: "delete remote tag".to_string(),
+                reason: format!("Failed to spawn git command: {}", e),
+            })?;
+
+        let status = tokio::select! {
+            result = child.wait() => {
+                result.map_err(|e| GitError::RemoteOperationFailed {
+                    operation: "delete remote tag".to_string(),
+                    reason: format!("Failed to wait for git command: {}", e),
+                })?
+            }
+            () = tokio::time::sleep(timeout_duration) => {
+                let _ = child.kill().await;
+                return Err(crate::error::ReleaseError::Git(GitError::RemoteOperationFailed {
+                    operation: "delete remote tag".to_string(),
+                    reason: "Remote tag deletion timed out after 300 seconds".to_string(),
+                }));
+            }
+        };
+
+        // Read stderr for error messages
+        if !status.success() {
+            let mut stderr_data = Vec::new();
+            if let Some(mut stderr) = child.stderr.take() {
+                use tokio::io::AsyncReadExt;
+                let _ = stderr.read_to_end(&mut stderr_data).await;
+            }
+            let stderr = String::from_utf8_lossy(&stderr_data);
+            return Err(crate::error::ReleaseError::Git(GitError::RemoteOperationFailed {
+                operation: "delete remote tag".to_string(),
+                reason: format!("Failed to delete remote tag '{}': {}", tag_name, stderr),
+            }));
+        }
+
         Ok(())
     }
 }

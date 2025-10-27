@@ -25,8 +25,8 @@ pub fn parse_args() -> Args {
 }
 
 /// Validate arguments without executing (for testing)
-pub fn validate_args(args: &Args) -> Result<(), String> {
-    args.validate()
+pub fn validate_args(args: &Args) -> crate::error::Result<()> {
+    args.validate().map_err(|e| crate::error::CliError::InvalidArguments { reason: e }.into())
 }
 
 /// Create runtime configuration from arguments

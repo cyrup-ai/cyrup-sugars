@@ -5,7 +5,7 @@
 
 use crate::error::{Result, StateError};
 use crate::git::{CommitInfo, TagInfo, PushInfo};
-use crate::publish::{PublishResult, PublishingResult, RollbackResult};
+use crate::publish::PublishResult;
 use crate::version::{VersionBump, UpdateResult};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -43,6 +43,8 @@ pub struct ReleaseState {
     pub errors: Vec<ReleaseError>,
     /// Release configuration
     pub config: ReleaseConfig,
+    /// Original package versions before release (for rollback)
+    pub original_versions: Option<HashMap<String, String>>,
 }
 
 /// Phase of the release operation
@@ -268,6 +270,7 @@ impl ReleaseState {
             publish_state: None,
             errors: Vec::new(),
             config,
+            original_versions: None,
         }
     }
 
@@ -331,6 +334,12 @@ impl ReleaseState {
             backup_files: Vec::new(), // This would be populated by the version manager
         });
 
+        self.updated_at = chrono::Utc::now();
+    }
+
+    /// Set original package versions (for rollback support)
+    pub fn set_original_versions(&mut self, versions: HashMap<String, String>) {
+        self.original_versions = Some(versions);
         self.updated_at = chrono::Utc::now();
     }
 

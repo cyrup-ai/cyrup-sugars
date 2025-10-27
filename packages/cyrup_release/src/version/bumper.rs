@@ -4,10 +4,11 @@
 
 use crate::error::{Result, VersionError};
 use semver::{Version, Prerelease, BuildMetadata};
+use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 /// Type of version bump to perform
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VersionBump {
     /// Bump major version (breaking changes)
     Major,
@@ -216,7 +217,7 @@ impl VersionBumper {
 }
 
 /// Preview of all possible version bumps
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BumpPreview {
     /// Current version
     pub current: Version,
@@ -230,12 +231,12 @@ pub struct BumpPreview {
 
 impl BumpPreview {
     /// Get version for specific bump type
-    pub fn get_version(&self, bump_type: VersionBump) -> Option<&Version> {
+    pub fn get_version<'a>(&'a self, bump_type: &'a VersionBump) -> Option<&'a Version> {
         match bump_type {
             VersionBump::Major => Some(&self.major),
             VersionBump::Minor => Some(&self.minor),
             VersionBump::Patch => Some(&self.patch),
-            VersionBump::Exact(ref version) => Some(version),
+            VersionBump::Exact(version) => Some(version),
         }
     }
 
@@ -251,7 +252,7 @@ impl BumpPreview {
 impl FromStr for VersionBump {
     type Err = VersionError;
 
-    fn from_str(s: &str) -> Result<Self> {
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "major" => Ok(VersionBump::Major),
             "minor" => Ok(VersionBump::Minor),
@@ -281,8 +282,6 @@ impl std::fmt::Display for VersionBump {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     // Note: Tests will be written in ./tests/ directory by another agent
     // This is just to ensure the module compiles correctly
 }

@@ -6,8 +6,8 @@
 use crate::error::{Result, VersionError};
 use semver::Version;
 use std::collections::HashMap;
-use std::path::Path;
-use toml_edit::{DocumentMut, Item, Value, InlineTable, Array};
+use std::path::{Path, PathBuf};
+use toml_edit::{DocumentMut, Item, Value, InlineTable};
 
 /// Format-preserving TOML editor for Cargo.toml files
 #[derive(Debug)]
@@ -146,7 +146,7 @@ impl TomlEditor {
         // Update in [dependencies] section
         if let Some(deps_table) = self.document.get_mut("dependencies").and_then(|item| item.as_table_mut()) {
             if let Some(dep_item) = deps_table.get_mut(dependency_name) {
-                self.update_dependency_item(dep_item, &version_str)?;
+                Self::update_dependency_item(dep_item, &version_str, &self.file_path)?;
                 updated = true;
             }
         }
@@ -154,7 +154,7 @@ impl TomlEditor {
         // Update in [dev-dependencies] section
         if let Some(dev_deps_table) = self.document.get_mut("dev-dependencies").and_then(|item| item.as_table_mut()) {
             if let Some(dep_item) = dev_deps_table.get_mut(dependency_name) {
-                self.update_dependency_item(dep_item, &version_str)?;
+                Self::update_dependency_item(dep_item, &version_str, &self.file_path)?;
                 updated = true;
             }
         }
@@ -162,7 +162,7 @@ impl TomlEditor {
         // Update in [build-dependencies] section
         if let Some(build_deps_table) = self.document.get_mut("build-dependencies").and_then(|item| item.as_table_mut()) {
             if let Some(dep_item) = build_deps_table.get_mut(dependency_name) {
-                self.update_dependency_item(dep_item, &version_str)?;
+                Self::update_dependency_item(dep_item, &version_str, &self.file_path)?;
                 updated = true;
             }
         }
@@ -179,7 +179,7 @@ impl TomlEditor {
     }
 
     /// Update a single dependency item (handles different formats)
-    fn update_dependency_item(&mut self, dep_item: &mut Item, version_str: &str) -> Result<()> {
+    fn update_dependency_item(dep_item: &mut Item, version_str: &str, file_path: &PathBuf) -> Result<()> {
         match dep_item {
             Item::Value(Value::String(version_ref)) => {
                 // Simple string dependency: "1.0.0"
@@ -205,7 +205,7 @@ impl TomlEditor {
             }
             _ => {
                 return Err(VersionError::TomlUpdateFailed {
-                    path: self.file_path.clone(),
+                    path: file_path.clone(),
                     reason: format!("Unexpected dependency format for item: {:?}", dep_item),
                 }.into());
             }
@@ -459,8 +459,11 @@ impl TomlEditor {
 /// Dependency section type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DependencySection {
+    /// Regular dependencies section
     Dependencies,
+    /// Development dependencies section
     DevDependencies,
+    /// Build dependencies section
     BuildDependencies,
 }
 
@@ -478,9 +481,13 @@ impl DependencySection {
 /// Information about a dependency
 #[derive(Debug, Clone)]
 pub struct DependencyInfo {
+    /// Version requirement for the dependency
     pub version: Option<String>,
+    /// Local path to the dependency
     pub path: Option<String>,
+    /// Git repository URL for the dependency
     pub git: Option<String>,
+    /// Which dependency section this belongs to
     pub section: DependencySection,
 }
 

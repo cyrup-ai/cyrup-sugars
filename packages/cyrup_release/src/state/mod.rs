@@ -15,7 +15,7 @@ pub use manager::{
     StateManager, StateConfig, LoadStateResult, SaveStateResult, StateFileInfo, FileInfo,
 };
 
-use crate::error::{Result, StateError};
+use crate::error::Result;
 use std::path::Path;
 
 /// Create a state manager for the default state file location

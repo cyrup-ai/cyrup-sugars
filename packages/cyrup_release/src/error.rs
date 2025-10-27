@@ -61,23 +61,40 @@ pub enum WorkspaceError {
 
     /// Invalid workspace structure
     #[error("Invalid workspace structure: {reason}")]
-    InvalidStructure { reason: String },
+    InvalidStructure {
+        /// Reason for the invalid structure
+        reason: String
+    },
 
     /// Package not found in workspace
     #[error("Package '{name}' not found in workspace")]
-    PackageNotFound { name: String },
+    PackageNotFound {
+        /// Name of the package that was not found
+        name: String
+    },
 
     /// Circular dependency detected
     #[error("Circular dependency detected in packages: {packages:?}")]
-    CircularDependency { packages: Vec<String> },
+    CircularDependency {
+        /// List of packages involved in the circular dependency
+        packages: Vec<String>
+    },
 
     /// Missing Cargo.toml file
     #[error("Missing Cargo.toml file at {path}")]
-    MissingCargoToml { path: PathBuf },
+    MissingCargoToml {
+        /// Path where Cargo.toml was expected
+        path: PathBuf
+    },
 
     /// Invalid package configuration
     #[error("Invalid package configuration for '{package}': {reason}")]
-    InvalidPackage { package: String, reason: String },
+    InvalidPackage {
+        /// Name of the package with invalid configuration
+        package: String,
+        /// Reason for the invalid configuration
+        reason: String
+    },
 }
 
 /// Version management errors
@@ -85,12 +102,19 @@ pub enum WorkspaceError {
 pub enum VersionError {
     /// Invalid version format
     #[error("Invalid version '{version}': {reason}")]
-    InvalidVersion { version: String, reason: String },
+    InvalidVersion {
+        /// The invalid version string
+        version: String,
+        /// Reason why the version is invalid
+        reason: String
+    },
 
     /// Version parsing failed
     #[error("Failed to parse version '{version}': {source}")]
     ParseFailed {
+        /// The version string that failed to parse
         version: String,
+        /// The underlying semver parsing error
         #[source]
         source: semver::Error,
     },
@@ -98,18 +122,31 @@ pub enum VersionError {
     /// Internal dependency version mismatch
     #[error("Internal dependency version mismatch for '{dependency}': expected {expected}, found {found}")]
     DependencyMismatch {
+        /// Name of the dependency with version mismatch
         dependency: String,
+        /// Expected version string
         expected: String,
+        /// Actual version found
         found: String,
     },
 
     /// Failed to update Cargo.toml
     #[error("Failed to update Cargo.toml at {path}: {reason}")]
-    TomlUpdateFailed { path: PathBuf, reason: String },
+    TomlUpdateFailed {
+        /// Path to the Cargo.toml file
+        path: PathBuf,
+        /// Reason for the update failure
+        reason: String
+    },
 
     /// Version bump not supported
     #[error("Version bump '{bump}' not supported for version '{version}'")]
-    UnsupportedBump { bump: String, version: String },
+    UnsupportedBump {
+        /// The bump type that was requested
+        bump: String,
+        /// The current version
+        version: String
+    },
 }
 
 /// Git operation errors
@@ -125,27 +162,47 @@ pub enum GitError {
 
     /// Git authentication failed
     #[error("Git authentication failed: {reason}")]
-    AuthenticationFailed { reason: String },
+    AuthenticationFailed {
+        /// Reason for authentication failure
+        reason: String
+    },
 
     /// Remote operation failed
     #[error("Git remote operation failed: {operation} - {reason}")]
-    RemoteOperationFailed { operation: String, reason: String },
+    RemoteOperationFailed {
+        /// The git operation that failed
+        operation: String,
+        /// Reason for the failure
+        reason: String
+    },
 
     /// Tag already exists
     #[error("Git tag '{tag}' already exists. Use --force to overwrite or choose a different version.")]
-    TagExists { tag: String },
+    TagExists {
+        /// The tag name that already exists
+        tag: String
+    },
 
     /// Branch operation failed
     #[error("Git branch operation failed: {reason}")]
-    BranchOperationFailed { reason: String },
+    BranchOperationFailed {
+        /// Reason for branch operation failure
+        reason: String
+    },
 
     /// Commit failed
     #[error("Git commit failed: {reason}")]
-    CommitFailed { reason: String },
+    CommitFailed {
+        /// Reason for commit failure
+        reason: String
+    },
 
     /// Push failed
     #[error("Git push failed: {reason}")]
-    PushFailed { reason: String },
+    PushFailed {
+        /// Reason for push failure
+        reason: String
+    },
 }
 
 /// Publishing errors
@@ -153,23 +210,44 @@ pub enum GitError {
 pub enum PublishError {
     /// Package already published
     #[error("Package '{package}' version '{version}' already published to crates.io")]
-    AlreadyPublished { package: String, version: String },
+    AlreadyPublished {
+        /// Name of the package
+        package: String,
+        /// Version that is already published
+        version: String
+    },
 
     /// Publish command failed
     #[error("Cargo publish failed for '{package}': {reason}")]
-    PublishFailed { package: String, reason: String },
+    PublishFailed {
+        /// Name of the package that failed to publish
+        package: String,
+        /// Reason for the publish failure
+        reason: String
+    },
 
     /// Dry run validation failed
     #[error("Dry run validation failed for '{package}': {reason}")]
-    DryRunFailed { package: String, reason: String },
+    DryRunFailed {
+        /// Name of the package that failed dry run
+        package: String,
+        /// Reason for the dry run failure
+        reason: String
+    },
 
     /// Rate limit exceeded
     #[error("Rate limit exceeded for crates.io. Please wait {retry_after_seconds} seconds before retrying.")]
-    RateLimitExceeded { retry_after_seconds: u64 },
+    RateLimitExceeded {
+        /// Number of seconds to wait before retrying
+        retry_after_seconds: u64
+    },
 
     /// Network error during publishing
     #[error("Network error during publishing: {reason}")]
-    NetworkError { reason: String },
+    NetworkError {
+        /// Reason for the network error
+        reason: String
+    },
 
     /// Authentication error for crates.io
     #[error("Authentication error: Please ensure you're logged in with 'cargo login'")]
@@ -178,8 +256,11 @@ pub enum PublishError {
     /// Yank operation failed
     #[error("Failed to yank package '{package}' version '{version}': {reason}")]
     YankFailed {
+        /// Name of the package to yank
         package: String,
+        /// Version to yank
         version: String,
+        /// Reason for the yank failure
         reason: String,
     },
 }
@@ -189,7 +270,10 @@ pub enum PublishError {
 pub enum StateError {
     /// State file corrupted
     #[error("State file corrupted: {reason}")]
-    Corrupted { reason: String },
+    Corrupted {
+        /// Reason for state corruption
+        reason: String
+    },
 
     /// State file not found
     #[error("State file not found. No release in progress.")]
@@ -197,15 +281,26 @@ pub enum StateError {
 
     /// State version mismatch
     #[error("State file version mismatch: expected {expected}, found {found}")]
-    VersionMismatch { expected: String, found: String },
+    VersionMismatch {
+        /// Expected state file version
+        expected: String,
+        /// Actual state file version found
+        found: String
+    },
 
     /// Failed to save state
     #[error("Failed to save state: {reason}")]
-    SaveFailed { reason: String },
+    SaveFailed {
+        /// Reason for save failure
+        reason: String
+    },
 
     /// Failed to load state
     #[error("Failed to load state: {reason}")]
-    LoadFailed { reason: String },
+    LoadFailed {
+        /// Reason for load failure
+        reason: String
+    },
 }
 
 /// CLI-specific errors
@@ -213,19 +308,33 @@ pub enum StateError {
 pub enum CliError {
     /// Invalid command line arguments
     #[error("Invalid arguments: {reason}")]
-    InvalidArguments { reason: String },
+    InvalidArguments {
+        /// Reason for invalid arguments
+        reason: String
+    },
 
     /// Missing required argument
     #[error("Missing required argument: {argument}")]
-    MissingArgument { argument: String },
+    MissingArgument {
+        /// Name of the missing argument
+        argument: String
+    },
 
     /// Conflicting arguments
     #[error("Conflicting arguments: {arguments:?}")]
-    ConflictingArguments { arguments: Vec<String> },
+    ConflictingArguments {
+        /// List of conflicting argument names
+        arguments: Vec<String>
+    },
 
     /// Command execution failed
     #[error("Command execution failed: {command} - {reason}")]
-    ExecutionFailed { command: String, reason: String },
+    ExecutionFailed {
+        /// The command that failed
+        command: String,
+        /// Reason for execution failure
+        reason: String
+    },
 }
 
 impl ReleaseError {

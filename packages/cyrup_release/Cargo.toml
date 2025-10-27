@@ -28,7 +28,7 @@ gix = "0.73.0"
 toml_edit = "0.23.3"
 
 # Semantic version parsing and manipulation
-semver = "1.0.26"
+semver = { version = "1.0.26", features = ["serde"] }
 
 # CLI argument parsing
 clap = { version = "4.5", features = ["derive", "cargo"] }
@@ -50,6 +50,7 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Dependency graph analysis
 petgraph = "0.6"
+fixedbitset = "0.4"
 
 # TOML parsing and manipulation
 toml = "0.8"

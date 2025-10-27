@@ -50,7 +50,7 @@ impl VersionManager {
 
         // Calculate new version
         let bumper = VersionBumper::from_version(current_version.clone());
-        let new_version = bumper.bump(bump)?;
+        let new_version = bumper.bump(bump.clone())?;
 
         // Validate consistency before update
         let consistency_report = self.updater.validate_version_consistency()?;
@@ -97,7 +97,7 @@ impl VersionManager {
             })?;
 
         let bumper = VersionBumper::from_version(current_version);
-        let new_version = bumper.bump(bump)?;
+        let new_version = bumper.bump(bump.clone())?;
         let bump_preview = bumper.preview_bumps()?;
         let update_preview = self.updater.preview_update(&new_version)?;
 
@@ -202,7 +202,7 @@ pub struct ReleaseVersionResult {
 }
 
 /// Result of version bump preview
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct BumpPreviewResult {
     /// Type of version bump
     pub bump_type: VersionBump,

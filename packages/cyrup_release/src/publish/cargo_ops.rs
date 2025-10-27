@@ -6,14 +6,13 @@
 use crate::error::{Result, PublishError};
 use crate::workspace::PackageInfo;
 use semver::Version;
-use std::path::Path;
 use std::process::Stdio;
 use std::time::Duration;
 use tokio::process::Command;
 use tokio::time::{sleep, timeout};
 
 /// Cargo publisher with retry logic and rate limiting
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CargoPublisher {
     /// Maximum number of retry attempts
     max_retries: usize,
@@ -136,7 +135,7 @@ impl CargoPublisher {
         }
 
         // Attempt publish with retry logic
-        let result = self.retry_with_backoff(
+        let _result = self.retry_with_backoff(
             || self.attempt_publish(package_info, config),
             &mut retry_attempts,
             &mut warnings,

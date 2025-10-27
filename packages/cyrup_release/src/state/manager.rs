@@ -39,6 +39,8 @@ pub struct StateConfig {
     pub lock_timeout_ms: u64,
     /// Whether to validate state on load
     pub validate_on_load: bool,
+    /// Whether to create backup files
+    pub create_backups: bool,
 }
 
 impl Default for StateConfig {
@@ -49,6 +51,7 @@ impl Default for StateConfig {
             compress_state: false,
             lock_timeout_ms: 5000, // 5 seconds
             validate_on_load: true,
+            create_backups: true,
         }
     }
 }
@@ -62,6 +65,24 @@ struct FileLock {
     pid: u32,
     /// Timestamp when lock was acquired
     acquired_at: SystemTime,
+}
+
+impl Drop for FileLock {
+    fn drop(&mut self) {
+        // Clean up lock file when FileLock is dropped
+        // Log lock information for debugging
+        let duration = self.acquired_at.elapsed().unwrap_or_default();
+        log::debug!(
+            "Releasing file lock (PID: {}, held for: {:?})",
+            self.pid,
+            duration
+        );
+        
+        // Use the lock_file field to remove the lock
+        if self.lock_file.exists() {
+            let _ = std::fs::remove_file(&self.lock_file);
+        }
+    }
 }
 
 /// Result of state loading operation
@@ -396,9 +417,12 @@ impl StateManager {
         Ok(state)
     }
 
-    /// Create backup if needed
+    /// Create backup if configured
     fn maybe_create_backup(&self, serialized_state: &str) -> Result<bool> {
-        // Always create backup for now (could be made configurable)
+        if !self.config.create_backups {
+            return Ok(false);
+        }
+
         fs::write(&self.backup_file_path, serialized_state)
             .map_err(|e| StateError::SaveFailed {
                 reason: format!("Failed to create backup: {}", e),

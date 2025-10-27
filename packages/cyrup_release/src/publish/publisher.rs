@@ -333,7 +333,8 @@ impl Publisher {
 
         // Yank packages in reverse dependency order
         let publish_order = self.dependency_graph.publish_order()?;
-        let packages_to_yank: Vec<_> = publish_order.ordered_packages().rev().collect();
+        let mut packages_to_yank: Vec<_> = publish_order.ordered_packages().collect();
+        packages_to_yank.reverse();
 
         for package_name in packages_to_yank {
             if let Some(publish_result) = self.publish_state.completed_publishes.get(package_name) {
@@ -346,12 +347,12 @@ impl Publisher {
                 ).await {
                     Ok(yank_result) => {
                         println!("✅ {}", yank_result.format_result());
-                        yanked_packages.insert(package_name.clone(), yank_result);
+                        yanked_packages.insert(package_name.to_string(), yank_result);
                     }
                     Err(e) => {
                         let error_msg = format!("Failed to yank {}: {}", package_name, e);
                         println!("❌ {}", error_msg);
-                        yank_failures.insert(package_name.clone(), error_msg);
+                        yank_failures.insert(package_name.to_string(), error_msg);
                     }
                 }
             }
@@ -481,7 +482,7 @@ impl PublishingResult {
 
         if !self.successful_publishes.is_empty() {
             report.push_str("\n📦 Successfully Published:\n");
-            for (package, result) in &self.successful_publishes {
+            for (_package, result) in &self.successful_publishes {
                 report.push_str(&format!("  ✅ {}\n", result.summary()));
             }
         }

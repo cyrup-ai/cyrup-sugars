@@ -4,7 +4,6 @@ use crate::error::{Result, WorkspaceError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use toml_edit::DocumentMut;
 
 /// Complete workspace information
 #[derive(Debug, Clone)]

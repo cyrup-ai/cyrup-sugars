@@ -3,12 +3,12 @@
 //! This module performs comprehensive validation to ensure the workspace is ready
 //! for release operations, preventing failures during the release process.
 
-use crate::error::{Result, WorkspaceError, GitError, PublishError};
+use crate::error::{Result, GitError, PublishError};
 use crate::workspace::WorkspaceInfo;
+use gix::bstr::ByteSlice;
 use gix::Repository;
-use std::collections::HashMap;
-use std::path::Path;
-use std::process::{Command, Stdio};
+use serde::{Deserialize, Serialize};
+use std::process::Stdio;
 use tokio::process::Command as AsyncCommand;
 
 /// Comprehensive workspace validator
@@ -19,7 +19,7 @@ pub struct WorkspaceValidator {
 }
 
 /// Validation result with detailed pass/fail information
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationResult {
     /// Overall validation success
     pub success: bool,
@@ -32,7 +32,7 @@ pub struct ValidationResult {
 }
 
 /// Individual validation check result
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationCheck {
     /// Name of the validation check
     pub name: String,
@@ -49,7 +49,7 @@ pub struct ValidationCheck {
 impl WorkspaceValidator {
     /// Create a new workspace validator
     pub fn new(workspace: WorkspaceInfo) -> Result<Self> {
-        let repository = Repository::discover(&workspace.root)
+        let repository = gix::discover(&workspace.root)
             .map_err(|_| GitError::NotRepository)?;
 
         Ok(Self {
@@ -105,7 +105,7 @@ impl WorkspaceValidator {
         let duration = start_time.elapsed().as_millis() as u64;
 
         match status_result {
-            Ok(is_clean) if is_clean => {
+            Ok(true) => {
                 checks.push(ValidationCheck {
                     name: "Git Working Directory".to_string(),
                     passed: true,
@@ -171,35 +171,16 @@ impl WorkspaceValidator {
 
     /// Check if working directory is clean
     async fn check_working_directory_clean(&self) -> Result<bool> {
-        let workdir = self.repository.work_dir()
-            .ok_or_else(|| GitError::NotRepository)?;
-
-        let status = self.repository.status(gix::status::Platform::default())
+        // Use is_dirty() - the correct gix 0.73.0 API for status checking
+        // This checks for both staged and unstaged changes (but not untracked files)
+        let is_dirty = self.repository.is_dirty()
             .map_err(|e| GitError::RemoteOperationFailed {
                 operation: "status check".to_string(),
                 reason: e.to_string(),
             })?;
-
-        // Check for any modifications, additions, or deletions
-        let mut has_changes = false;
         
-        for entry in status {
-            let entry = entry.map_err(|e| GitError::RemoteOperationFailed {
-                operation: "status iteration".to_string(),
-                reason: e.to_string(),
-            })?;
-
-            if entry.status().is_modified() || 
-               entry.status().is_added() || 
-               entry.status().is_deleted() ||
-               entry.status().is_renamed() ||
-               entry.status().is_copied() {
-                has_changes = true;
-                break;
-            }
-        }
-
-        Ok(!has_changes)
+        // Return true if clean (not dirty)
+        Ok(!is_dirty)
     }
 
     /// Check if we're on a valid branch
@@ -210,7 +191,7 @@ impl WorkspaceValidator {
             })?;
 
         let branch_name = head.referent_name()
-            .and_then(|name| name.shorten().to_str())
+            .and_then(|name| name.shorten().to_str().ok())
             .map(|s| s.to_string())
             .unwrap_or_else(|| "detached HEAD".to_string());
 
@@ -289,7 +270,7 @@ impl WorkspaceValidator {
             
             if !version_mismatches.is_empty() {
                 message_parts.extend(version_mismatches.iter().cloned());
-                critical_errors.extend(version_mismatches);
+                critical_errors.extend(version_mismatches.clone());
             }
             
             if !dependency_version_issues.is_empty() {
@@ -463,7 +444,7 @@ impl WorkspaceValidator {
             .stderr(Stdio::piped());
 
         let output = whoami_cmd.output().await
-            .map_err(|e| PublishError::AuthenticationError)?;
+            .map_err(|_e| PublishError::AuthenticationError)?;
 
         // If we get an authentication error, we're not logged in
         let stderr = String::from_utf8_lossy(&output.stderr);

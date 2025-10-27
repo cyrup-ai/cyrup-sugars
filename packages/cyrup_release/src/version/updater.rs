@@ -4,7 +4,7 @@
 //! ensuring internal dependencies are properly synchronized.
 
 use crate::error::{Result, VersionError};
-use crate::version::{VersionBumper, TomlEditor, TomlBackup};
+use crate::version::{TomlEditor, TomlBackup};
 use crate::workspace::WorkspaceInfo;
 use semver::Version;
 use std::collections::HashMap;
@@ -97,11 +97,17 @@ impl VersionUpdater {
             return Err(e);
         }
 
+        // Collect package data to avoid borrow conflicts
+        let packages_to_update: Vec<(String, crate::workspace::PackageInfo)> =
+            self.workspace.packages.iter()
+                .map(|(name, info)| (name.clone(), info.clone()))
+                .collect();
+
         // Update all packages in the workspace
-        for (package_name, package_info) in &self.workspace.packages {
+        for (package_name, package_info) in packages_to_update {
             match self.update_package_version(
-                package_name,
-                package_info,
+                &package_name,
+                &package_info,
                 new_version,
                 &config,
                 &mut modified_files,
@@ -151,7 +157,7 @@ impl VersionUpdater {
     /// Update a single package and its dependencies
     fn update_package_version(
         &mut self,
-        package_name: &str,
+        _package_name: &str,
         package_info: &crate::workspace::PackageInfo,
         new_version: &Version,
         config: &UpdateConfig,
@@ -423,7 +429,7 @@ pub enum InconsistencyType {
 }
 
 /// Preview of version update operation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct UpdatePreview {
     /// Current version
     pub from_version: Version,
@@ -438,7 +444,7 @@ pub struct UpdatePreview {
 }
 
 /// Preview of package update
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PackageUpdate {
     /// Package name
     pub name: String,
@@ -449,7 +455,7 @@ pub struct PackageUpdate {
 }
 
 /// Preview of dependency update
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DependencyUpdate {
     /// Package containing the dependency
     pub package: String,
@@ -462,7 +468,7 @@ pub struct DependencyUpdate {
 }
 
 /// A single version change
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct VersionChange {
     /// Field being changed (e.g., "version", "dependencies.foo")
     pub field: String,
