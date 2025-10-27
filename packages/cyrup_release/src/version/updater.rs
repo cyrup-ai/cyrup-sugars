@@ -258,6 +258,11 @@ impl VersionUpdater {
         let mut dependencies_checked = 0;
 
         for (package_name, package_info) in &self.workspace.packages {
+            // Skip packages with publish = false
+            if let Some(toml::Value::Boolean(false)) = package_info.config.other.get("publish") {
+                continue;
+            }
+            
             packages_checked += 1;
 
             // Check package version consistency
