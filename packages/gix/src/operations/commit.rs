@@ -144,18 +144,18 @@ pub async fn commit(repo: RepoHandle, opts: CommitOpts) -> GitResult<CommitId> {
             let mut index = index;
             let mut changed = false;
 
-            // Collect entries to process to avoid borrow issues
+            // Collect entries WITH THEIR INDICES to avoid borrow issues and allow modification
             let entries_to_process: Vec<_> = (0..index.entries().len())
                 .map(|idx| {
                     let entry = &index.entries()[idx];
                     let entry_path = entry.path(&index).to_owned();
                     let entry_id = entry.id;
-                    (entry_path, entry_id)
+                    (idx, entry_path, entry_id)
                 })
                 .collect();
 
             // Process each tracked file
-            for (entry_path, old_id) in entries_to_process {
+            for (entry_idx, entry_path, old_id) in entries_to_process {
                 // Build full path
                 use gix::bstr::ByteSlice;
                 use std::path::Path;
@@ -196,15 +196,12 @@ pub async fn commit(repo: RepoHandle, opts: CommitOpts) -> GitResult<CommitId> {
                         GitError::InvalidInput(format!("Failed to create stat: {e}"))
                     })?;
 
-                    // Add to index
-                    use gix::index::entry::Flags;
-                    index.dangerously_push_entry(
-                        stat,
-                        blob_id,
-                        Flags::empty(),
-                        mode,
-                        entry_path.as_ref(),
-                    );
+                    // UPDATE the existing entry in place instead of pushing a duplicate
+                    let entry = &mut index.entries_mut()[entry_idx];
+                    entry.id = blob_id;
+                    entry.stat = stat;
+                    entry.mode = mode;
+                    
                     changed = true;
                 }
             }
